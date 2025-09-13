@@ -1,0 +1,28 @@
+{
+  "name": "trtc-ai-tts-demo",
+  "version": "1.0.0",
+  "description": "Tencent Cloud TRTC-AI TTS API Demo with Node.js",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "keywords": [
+    "tts",
+    "tencent-cloud",
+    "voice-synthesis",
+    "voice-cloning"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "multer": "^1.4.5-lts.1",
+    "tencentcloud-sdk-nodejs-trtc": "^4.0.3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2"
+  }
+}
