@@ -3,8 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>腾讯云 TTS 语音合成</title>
+    <title>TRTC-AI TTS Demo · 文本转语音/流式/克隆</title>
     <style>
+        :root {
+            --bg: #f6f7f9;
+            --panel: #ffffff;
+            --text: #1f2328;
+            --muted: #667085;
+            --border: #e5e7eb;
+            --primary: #667eea;
+            --primary-2: #764ba2;
+            --radius: 12px;
+        }
+        body.dark {
+            --bg: #0b1220;
+            --panel: #0f172a;
+            --text: #e5e7eb;
+            --muted: #94a3b8;
+            --border: #1f2937;
+            --primary: #8b5cf6;
+            --primary-2: #6366f1;
+        }
         * {
             margin: 0;
             padding: 0;
@@ -13,82 +32,98 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: var(--bg);
             min-height: 100vh;
-            padding: 20px;
+            padding: 0;
+            margin: 0;
+            color: var(--text);
         }
 
         .container {
-            max-width: 900px;
+            max-width: 1120px;
             margin: 0 auto;
-            background: white;
-            border-radius: 16px;
-            overflow: hidden;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
         }
 
         .header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 40px;
-            text-align: center;
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+            background: linear-gradient(135deg, #eef1ff 0%, #f7f0ff 100%);
+        }
+        body.dark .header {
+            background: linear-gradient(135deg, #111827 0%, #0f172a 100%);
         }
 
         .header h1 {
-            font-size: 2.2em;
-            margin-bottom: 8px;
-            font-weight: 600;
+            font-size: 20px;
+            margin: 0;
+            font-weight: 700;
+            color: #2b2f36;
+            letter-spacing: -0.5px;
+        }
+        body.dark .header h1 { color: #e5e7eb; }
+
+        .header .sub {
+            margin-top: 4px;
+            font-size: 12px;
+            color: var(--muted);
         }
 
-        .header p {
-            opacity: 0.9;
-            font-size: 1.1em;
-        }
+        .header-row { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+        .actions { display:flex; align-items:center; gap:10px; }
+        .theme-toggle { border:1px solid var(--border); background: var(--panel); color: var(--text); padding:8px 10px; border-radius: 8px; cursor:pointer; font-size: 12px; }
+        .theme-toggle:hover { border-color: var(--primary); }
 
         .tabs {
             display: flex;
-            background: #f8f9fa;
-            border-bottom: 1px solid #e9ecef;
+            gap: 10px;
+            padding: 14px 24px;
+            background: transparent;
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            backdrop-filter: blur(6px);
+            z-index: 5;
         }
 
         .tab {
-            flex: 1;
-            padding: 20px;
-            text-align: center;
+            padding: 10px 14px;
             cursor: pointer;
-            font-weight: 500;
-            color: #6c757d;
-            transition: all 0.3s;
+            font-size: 13px;
+            color: var(--muted);
+            background: transparent;
             border: none;
-            background: none;
-            font-size: 14px;
+            border-radius: 999px;
+            transition: all 0.2s;
+            font-weight: 500;
+            position: relative;
         }
 
         .tab:hover {
-            background: #e9ecef;
-            color: #495057;
+            color: var(--text);
         }
 
         .tab.active {
-            background: white;
-            color: #667eea;
-            position: relative;
+            background: var(--panel);
+            color: var(--primary);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+            border: 1px solid var(--border);
         }
 
         .tab.active::after {
             content: '';
             position: absolute;
-            bottom: 0;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 60px;
-            height: 3px;
-            background: #667eea;
+            inset-inline: 10px;
+            bottom: -8px;
+            height: 2px;
+            background: linear-gradient(90deg, var(--primary), var(--primary-2));
             border-radius: 2px;
         }
 
         .tab-content {
-            padding: 40px;
+            padding: 24px;
             display: none;
         }
 
@@ -96,26 +131,55 @@
             display: block;
         }
 
+        /* Layout */
+        .content-grid {
+            display: grid;
+            grid-template-columns: 1.5fr 1fr;
+            gap: 16px;
+        }
+        .card {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 18px;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.04);
+        }
+        .card h3 {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: var(--text);
+        }
+
         .form-group {
-            margin-bottom: 24px;
+            margin-bottom: 16px;
         }
 
         .form-group label {
             display: block;
-            margin-bottom: 8px;
-            font-weight: 500;
-            color: #495057;
+            margin-bottom: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #24292e;
+            letter-spacing: -0.2px;
         }
 
         .form-group textarea,
         .form-group input {
             width: 100%;
             padding: 12px 16px;
-            border: 2px solid #e9ecef;
+            border: 1.5px solid var(--border);
             border-radius: 8px;
-            font-size: 14px;
-            transition: border-color 0.3s;
+            font-size: 15px;
+            transition: all 0.2s;
             font-family: inherit;
+            background: var(--panel);
+            color: var(--text);
+        }
+
+        .form-group textarea:hover,
+        .form-group input:hover {
+            border-color: #d1d5da;
         }
 
         .form-group textarea:focus,
@@ -126,84 +190,95 @@
         }
 
         .voice-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-            gap: 12px;
-            margin-top: 8px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
         }
 
         .voice-item {
-            padding: 12px;
-            border: 2px solid #e9ecef;
-            border-radius: 8px;
-            text-align: center;
+            padding: 8px 16px;
+            border: 1.5px solid var(--border);
+            border-radius: 20px;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all 0.2s;
             font-size: 14px;
-            background: white;
+            background: var(--panel);
+            color: var(--text);
+            font-weight: 500;
         }
 
         .voice-item:hover {
             border-color: #667eea;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.15);
         }
 
         .voice-item.selected {
             border-color: #667eea;
-            background: #667eea;
+            background: linear-gradient(135deg, #667eea, #764ba2);
             color: white;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.25);
         }
 
         .button-group {
             display: flex;
-            gap: 12px;
-            margin-top: 24px;
+            gap: 10px;
+            margin-top: 16px;
+            flex-wrap: wrap;
         }
 
         .btn {
-            flex: 1;
-            padding: 12px 24px;
+            padding: 10px 16px;
             border: none;
             border-radius: 8px;
-            font-size: 14px;
-            font-weight: 500;
+            font-size: 13px;
+            font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: all 0.2s;
             font-family: inherit;
+            position: relative;
+            overflow: hidden;
         }
 
         .btn-primary {
-            background: #667eea;
+            background: linear-gradient(135deg, #667eea, #764ba2);
             color: white;
-        }
-
-        .btn-primary:hover:not(:disabled) {
-            background: #5a6fd8;
-            transform: translateY(-1px);
             box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
         }
 
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-primary:active:not(:disabled) {
+            transform: translateY(0);
+        }
+
         .btn-secondary {
-            background: #f8f9fa;
-            color: #6c757d;
-            border: 1px solid #e9ecef;
+            background: white;
+            color: #586069;
+            border: 2px solid #e1e4e8;
         }
 
         .btn-secondary:hover:not(:disabled) {
-            background: #e9ecef;
+            background: #f6f8fa;
+            border-color: #d1d5da;
         }
 
         .btn:disabled {
             opacity: 0.5;
             cursor: not-allowed;
             transform: none !important;
+            box-shadow: none !important;
         }
 
         .loading {
             display: none;
             text-align: center;
-            padding: 20px;
+            padding: 28px 12px;
         }
 
         .loading.active {
@@ -211,13 +286,13 @@
         }
 
         .spinner {
-            border: 3px solid #f3f3f3;
+            border: 3px solid #e1e4e8;
             border-top: 3px solid #667eea;
             border-radius: 50%;
-            width: 32px;
-            height: 32px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 12px;
+            width: 36px;
+            height: 36px;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 16px;
         }
 
         @keyframes spin {
@@ -228,38 +303,40 @@
         .message {
             padding: 12px 16px;
             border-radius: 8px;
-            margin-top: 16px;
+            margin-top: 20px;
             display: none;
             font-size: 14px;
+            font-weight: 500;
         }
 
         .message.success {
-            background: #d1edff;
-            color: #0969da;
-            border: 1px solid #54aeff66;
+            background: linear-gradient(135deg, #d4edda, #c3e6cb);
+            color: #155724;
+            border-left: 4px solid #28a745;
             display: block;
         }
 
         .message.error {
-            background: #ffebe9;
-            color: #cf222e;
-            border: 1px solid #fd2d2d66;
+            background: linear-gradient(135deg, #f8d7da, #f5c6cb);
+            color: #721c24;
+            border-left: 4px solid #dc3545;
             display: block;
         }
 
         .message.info {
-            background: #ddf4ff;
-            color: #0969da;
-            border: 1px solid #54aeff66;
+            background: linear-gradient(135deg, #d1ecf1, #bee5eb);
+            color: #0c5460;
+            border-left: 4px solid #17a2b8;
             display: block;
         }
 
         .audio-player {
-            margin-top: 20px;
-            padding: 20px;
-            background: #f8f9fa;
-            border-radius: 8px;
-            border: 1px solid #e9ecef;
+            margin-top: 8px;
+            padding: 16px;
+            background: linear-gradient(135deg, #f8f9fa, #fff);
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            border: 1px solid var(--border);
             display: none;
         }
 
@@ -268,23 +345,38 @@
         }
 
         .audio-player h3 {
-            margin-bottom: 12px;
-            color: #495057;
+            margin: 0 0 16px 0;
+            color: #24292e;
             font-size: 16px;
+            font-weight: 600;
         }
 
         .audio-player audio {
             width: 100%;
-            margin-bottom: 12px;
+            margin-bottom: 16px;
+            border-radius: 8px;
         }
 
         .stats {
             display: flex;
-            gap: 20px;
-            margin-top: 16px;
-            font-size: 14px;
-            color: #6c757d;
+            gap: 16px;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border);
+            font-size: 12px;
+            color: #586069;
+            align-items: center;
         }
+
+        .player-actions { display:flex; gap:8px; margin-left:auto; }
+        .btn-tertiary {
+            background: #f6f8fa;
+            color: #24292e;
+            border: 1px solid var(--border);
+        }
+        .btn-tertiary:hover { background:#eef1f4; }
+        body.dark .btn-tertiary { background:#0b1220; color:#e5e7eb; }
+        body.dark .btn-tertiary:hover { background:#111827; }
 
         .stat-item {
             display: flex;
@@ -293,24 +385,23 @@
         }
 
         .file-upload {
-            border: 2px dashed #e9ecef;
-            border-radius: 8px;
-            padding: 40px 20px;
+            border: 2px dashed #d1d5da;
+            border-radius: 12px;
+            padding: 40px;
             text-align: center;
             cursor: pointer;
-            transition: all 0.3s;
-            background: #f8f9fa;
+            transition: all 0.2s;
+            background: linear-gradient(135deg, #fafbfc, #fff);
         }
 
         .file-upload:hover {
             border-color: #667eea;
-            background: #f0f4ff;
+            background: linear-gradient(135deg, #f0f3ff, #fff);
         }
 
         .file-upload.has-file {
             border-color: #28a745;
-            background: #d1eddd;
-            color: #155724;
+            background: linear-gradient(135deg, #d4edda, #fff);
         }
 
         .file-upload input {
@@ -318,10 +409,11 @@
         }
 
         .cloned-voices {
-            margin-top: 20px;
-            padding: 20px;
-            background: #f8f9fa;
-            border-radius: 8px;
+            margin-top: 32px;
+            padding: 24px;
+            background: linear-gradient(135deg, #f8f9fa, #fff);
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
             display: none;
         }
 
@@ -333,45 +425,54 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 12px;
+            padding: 16px;
             background: white;
-            border-radius: 6px;
-            margin-bottom: 8px;
-            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            border: 1px solid #e1e4e8;
+            transition: all 0.2s;
+        }
+
+        .cloned-voice-item:hover {
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
         }
 
         .voice-info .voice-name {
             font-weight: 500;
-            color: #495057;
+            color: #1d1d1f;
+            font-size: 14px;
         }
 
         .voice-info .voice-id {
-            font-size: 12px;
-            color: #6c757d;
+            font-size: 11px;
+            color: #86868b;
             margin-top: 2px;
+            font-family: 'SF Mono', Monaco, monospace;
         }
 
         .use-btn {
-            padding: 6px 12px;
-            background: #667eea;
+            padding: 6px 16px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
             color: white;
             border: none;
-            border-radius: 4px;
+            border-radius: 6px;
             font-size: 12px;
+            font-weight: 600;
             cursor: pointer;
-            transition: background 0.3s;
+            transition: all 0.2s;
         }
 
         .use-btn:hover {
-            background: #5a6fd8;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
         }
 
         .streaming-status {
-            margin-top: 20px;
-            padding: 16px;
-            background: #f8f9fa;
-            border-radius: 8px;
-            border: 1px solid #e9ecef;
+            margin-top: 24px;
+            padding: 20px;
+            background: linear-gradient(135deg, #f0f3ff, #fff);
+            border-radius: 10px;
+            border: 1px solid #d8dfff;
             display: none;
         }
 
@@ -381,8 +482,8 @@
 
         .status-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-            gap: 12px;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 20px;
         }
 
         .status-item {
@@ -392,37 +493,49 @@
         .status-label {
             display: block;
             font-size: 12px;
-            color: #6c757d;
+            color: #586069;
             margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .status-value {
-            font-weight: 500;
-            color: #495057;
+            font-weight: 600;
+            color: #24292e;
+            font-size: 16px;
         }
 
-        @media (max-width: 768px) {
-            body {
-                padding: 10px;
-            }
-            
+        .suggestions { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
+        .chip { padding:6px 10px; border:1px solid var(--border); border-radius:999px; font-size:12px; color:#475467; cursor:pointer; background:#fff; }
+        .chip:hover { border-color: var(--primary); color: var(--primary); }
+        body.dark .chip { background:#0f172a; color:#94a3b8; }
+
+        .copy-btn { margin-left:6px; padding:4px 8px; font-size:11px; border:1px solid var(--border); background: var(--panel); color: var(--text); border-radius:6px; cursor:pointer; }
+        .copy-btn:hover { border-color: var(--primary); }
+
+        @media (max-width: 920px) {
+            .content-grid { grid-template-columns: 1fr; }
             .tabs {
-                flex-direction: column;
+                flex-wrap: wrap;
             }
-            
+
             .tab-content {
-                padding: 20px;
+                padding: 16px;
             }
-            
+
             .voice-grid {
-                grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+                gap: 6px;
+            }
+
+            .button-group {
+                flex-direction: row;
                 gap: 8px;
             }
-            
-            .button-group {
-                flex-direction: column;
+
+            .btn {
+                flex: 1;
             }
-            
+
             .stats {
                 flex-direction: column;
                 gap: 8px;
@@ -433,51 +546,69 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🎙️ 腾讯云 TTS</h1>
-            <p>高质量语音合成服务</p>
+            <div class="header-row">
+                <div>
+                    <h1>TRTC‑AI 语音合成 Demo</h1>
+                    <div class="sub">文本转语音 · 流式合成 · 声音克隆</div>
+                </div>
+                <div class="actions">
+                    <button class="theme-toggle" onclick="toggleTheme()" id="theme-toggle" aria-label="切换主题">🌙 深色</button>
+                </div>
+            </div>
         </div>
 
         <div class="tabs">
-            <div class="tab active" onclick="switchTab('tts')">文本转语音</div>
-            <div class="tab" onclick="switchTab('streaming')">流式合成</div>
-            <div class="tab" onclick="switchTab('clone')">声音克隆</div>
+            <div class="tab active" onclick="switchTab('tts')">🗣️ 文本转语音</div>
+            <div class="tab" onclick="switchTab('streaming')">🌊 流式合成</div>
+            <div class="tab" onclick="switchTab('clone')">🧬 声音克隆</div>
+            <div class="tab" onclick="switchTab('history')">🕘 历史记录</div>
         </div>
 
         <!-- 文本转语音 -->
         <div id="tts-tab" class="tab-content active">
-            <div class="form-group">
-                <label>输入文本</label>
-                <textarea id="tts-text" rows="4" placeholder="请输入要转换的文本...">你好，欢迎使用腾讯云TTS语音合成服务！</textarea>
-            </div>
-
-            <div class="form-group">
-                <label>选择音色</label>
-                <div class="voice-grid" id="tts-voices"></div>
-            </div>
-
-            <div class="button-group">
-                <button class="btn btn-primary" onclick="synthesizeTTS()" id="tts-btn">开始合成</button>
-                <button class="btn btn-secondary" onclick="clearTTS()">清空</button>
-            </div>
-
-            <div id="tts-loading" class="loading">
-                <div class="spinner"></div>
-                <p>正在合成语音...</p>
-            </div>
-
-            <div id="tts-message" class="message"></div>
-
-            <div id="tts-player" class="audio-player">
-                <h3>合成结果</h3>
-                <audio id="tts-audio" controls></audio>
-                <div class="stats">
-                    <div class="stat-item">
-                        <span>⏱️</span>
-                        <span>处理时间：<span id="tts-time">-</span></span>
+            <div class="content-grid">
+                <div class="card">
+                    <h3>输入与音色</h3>
+                    <div class="form-group">
+                        <label>文本内容</label>
+                        <textarea id="tts-text" rows="5" placeholder="请输入要转换的文本...">你好，欢迎使用腾讯云 TTS 语音合成服务！</textarea>
+                        <div class="suggestions">
+                            <div class="chip" onclick="setSample('tts-text', '今天天气晴朗，最高气温二十五度，出门记得戴太阳镜。')">天气播报</div>
+                            <div class="chip" onclick="setSample('tts-text', '您好，这里是在线客服，很高兴为您服务。')">客服开场</div>
+                            <div class="chip" onclick="setSample('tts-text', '各位观众朋友们，欢迎来到本期节目，我们将带您探索科技与生活。')">旁白台词</div>
+                        </div>
                     </div>
-                    <div class="stat-item">
-                        <span>📊</span>
-                        <span>文件大小：<span id="tts-size">-</span></span>
+                    <div class="form-group">
+                        <label>音色</label>
+                        <div class="voice-grid" id="tts-voices"></div>
+                    </div>
+                    <div class="button-group">
+                        <button class="btn btn-primary" onclick="synthesizeTTS()" id="tts-btn">合成</button>
+                        <button class="btn btn-secondary" onclick="clearTTS()">重置</button>
+                    </div>
+                    <div id="tts-loading" class="loading">
+                        <div class="spinner"></div>
+                        <p>正在合成语音...</p>
+                    </div>
+                    <div id="tts-message" class="message"></div>
+                </div>
+                <div class="card">
+                    <h3>合成结果</h3>
+                    <div id="tts-player" class="audio-player">
+                        <audio id="tts-audio" controls></audio>
+                        <div class="stats">
+                            <div class="stat-item">
+                                <span style="opacity: 0.7;">⏱</span>
+                                <span>处理时间：<span id="tts-time">-</span></span>
+                            </div>
+                            <div class="stat-item">
+                                <span style="opacity: 0.7;">📊</span>
+                                <span>文件大小：<span id="tts-size">-</span></span>
+                            </div>
+                            <div class="player-actions">
+                                <button class="btn btn-tertiary" onclick="downloadAudio('tts')">下载 WAV</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -485,60 +616,65 @@
 
         <!-- 流式合成 -->
         <div id="streaming-tab" class="tab-content">
-            <div class="form-group">
-                <label>输入文本</label>
-                <textarea id="streaming-text" rows="4" placeholder="请输入要转换的文本...">流式语音合成可以实现更快的首字节响应时间，适合实时对话场景。</textarea>
-            </div>
-
-            <div class="form-group">
-                <label>选择音色</label>
-                <div class="voice-grid" id="streaming-voices"></div>
-            </div>
-
-            <div class="button-group">
-                <button class="btn btn-primary" onclick="synthesizeStreaming()" id="streaming-btn">开始流式合成</button>
-                <button class="btn btn-secondary" onclick="clearStreaming()">清空</button>
-            </div>
-
-            <div id="streaming-loading" class="loading">
-                <div class="spinner"></div>
-                <p>正在连接流式服务...</p>
-            </div>
-
-            <div id="streaming-status" class="streaming-status">
-                <div class="status-grid">
-                    <div class="status-item">
-                        <span class="status-label">连接状态</span>
-                        <span class="status-value" id="connection-status">未连接</span>
+            <div class="content-grid">
+                <div class="card">
+                    <h3>输入与音色</h3>
+                    <div class="form-group">
+                        <label>文本内容</label>
+                        <textarea id="streaming-text" rows="5" placeholder="请输入要转换的文本...">流式语音合成可以实现更快的首字节响应时间，适合实时对话场景。</textarea>
                     </div>
-                    <div class="status-item">
-                        <span class="status-label">接收块数</span>
-                        <span class="status-value" id="chunks-count">0</span>
+                    <div class="form-group">
+                        <label>音色</label>
+                        <div class="voice-grid" id="streaming-voices"></div>
                     </div>
-                    <div class="status-item">
-                        <span class="status-label">首包耗时</span>
-                        <span class="status-value" id="first-chunk-time">-</span>
+                    <div class="button-group">
+                        <button class="btn btn-primary" onclick="synthesizeStreaming()" id="streaming-btn">流式合成</button>
+                        <button class="btn btn-secondary" onclick="clearStreaming()">重置</button>
                     </div>
-                    <div class="status-item">
-                        <span class="status-label">总大小</span>
-                        <span class="status-value" id="total-size">0 KB</span>
+                    <div id="streaming-loading" class="loading">
+                        <div class="spinner"></div>
+                        <p>正在连接流式服务...</p>
                     </div>
+                    <div id="streaming-message" class="message"></div>
                 </div>
-            </div>
-
-            <div id="streaming-message" class="message"></div>
-
-            <div id="streaming-player" class="audio-player">
-                <h3>流式合成结果</h3>
-                <audio id="streaming-audio" controls></audio>
-                <div class="stats">
-                    <div class="stat-item">
-                        <span>⚡</span>
-                        <span>处理时间：<span id="streaming-time">-</span></span>
+                <div class="card">
+                    <h3>实时状态</h3>
+                    <div id="streaming-status" class="streaming-status active" style="display:block;">
+                        <div class="status-grid">
+                            <div class="status-item">
+                                <span class="status-label">连接状态</span>
+                                <span class="status-value" id="connection-status">未连接</span>
+                            </div>
+                            <div class="status-item">
+                                <span class="status-label">接收块数</span>
+                                <span class="status-value" id="chunks-count">0</span>
+                            </div>
+                            <div class="status-item">
+                                <span class="status-label">首包耗时</span>
+                                <span class="status-value" id="first-chunk-time">-</span>
+                            </div>
+                            <div class="status-item">
+                                <span class="status-label">总大小</span>
+                                <span class="status-value" id="total-size">0 KB</span>
+                            </div>
+                        </div>
                     </div>
-                    <div class="stat-item">
-                        <span>📊</span>
-                        <span>文件大小：<span id="streaming-size">-</span></span>
+                    <h3 style="margin-top:12px;">流式合成结果</h3>
+                    <div id="streaming-player" class="audio-player">
+                        <audio id="streaming-audio" controls></audio>
+                        <div class="stats">
+                            <div class="stat-item">
+                                <span style="opacity: 0.7;">⚡</span>
+                                <span>处理时间：<span id="streaming-time">-</span></span>
+                            </div>
+                            <div class="stat-item">
+                                <span style="opacity: 0.7;">📊</span>
+                                <span>文件大小：<span id="streaming-size">-</span></span>
+                            </div>
+                            <div class="player-actions">
+                                <button class="btn btn-tertiary" onclick="downloadAudio('streaming')">下载 WAV</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -546,62 +682,82 @@
 
         <!-- 声音克隆 -->
         <div id="clone-tab" class="tab-content">
-            <div class="form-group">
-                <label>声音名称</label>
-                <input type="text" id="clone-name" placeholder="给克隆的声音起个名字...">
-            </div>
-
-            <div class="form-group">
-                <label>上传音频文件 (WAV格式，16kHz，5-12秒)</label>
-                <div class="file-upload" id="file-upload" onclick="document.getElementById('clone-file').click()">
-                    <div id="upload-text">
-                        <div style="font-size: 24px; margin-bottom: 8px;">📁</div>
-                        <div>点击上传音频文件</div>
-                        <div style="font-size: 12px; color: #6c757d; margin-top: 4px;">支持 WAV、MP3 格式</div>
+            <div class="content-grid">
+                <div class="card">
+                    <h3>创建克隆音色</h3>
+                    <div class="form-group">
+                        <label>声音名称</label>
+                        <input type="text" id="clone-name" placeholder="给克隆的声音起个名字...">
                     </div>
-                    <div id="file-info" style="display: none;"></div>
-                </div>
-                <input type="file" id="clone-file" accept="audio/*">
-            </div>
-
-            <div class="button-group">
-                <button class="btn btn-primary" onclick="cloneVoice()" id="clone-btn">开始克隆</button>
-                <button class="btn btn-secondary" onclick="clearClone()">清空</button>
-            </div>
-
-            <div id="clone-loading" class="loading">
-                <div class="spinner"></div>
-                <p>正在克隆声音...</p>
-            </div>
-
-            <div id="clone-message" class="message"></div>
-
-            <div id="cloned-voices" class="cloned-voices">
-                <h3 style="margin-bottom: 16px; color: #495057;">已克隆的声音</h3>
-                <div id="cloned-voices-list"></div>
-            </div>
-
-            <div class="form-group" style="margin-top: 32px;">
-                <label>使用克隆声音合成</label>
-                <textarea id="clone-tts-text" rows="3" placeholder="输入要用克隆声音合成的文本...">你好，这是使用克隆声音合成的测试。</textarea>
-                <div class="button-group">
-                    <button class="btn btn-primary" onclick="synthesizeWithClonedVoice()" id="clone-tts-btn">合成</button>
-                </div>
-            </div>
-
-            <div id="clone-tts-player" class="audio-player">
-                <h3>克隆声音合成结果</h3>
-                <audio id="clone-tts-audio" controls></audio>
-                <div class="stats">
-                    <div class="stat-item">
-                        <span>⏱️</span>
-                        <span>处理时间：<span id="clone-tts-time">-</span></span>
+                    <div class="form-group">
+                        <label>上传音频文件 (WAV 16kHz，5-12秒)</label>
+                        <div class="file-upload" id="file-upload" onclick="document.getElementById('clone-file').click()">
+                            <div id="upload-text">
+                                <div style="font-size: 32px; margin-bottom: 8px; opacity: 0.5;">↑</div>
+                                <div style="color: #1d1d1f;">点击上传音频文件</div>
+                                <div style="font-size: 12px; color: #86868b; margin-top: 4px;">支持 WAV、MP3 格式</div>
+                            </div>
+                            <div id="file-info" style="display: none;"></div>
+                        </div>
+                        <input type="file" id="clone-file" accept="audio/*">
                     </div>
-                    <div class="stat-item">
-                        <span>📊</span>
-                        <span>文件大小：<span id="clone-tts-size">-</span></span>
+                    <div class="button-group">
+                        <button class="btn btn-primary" onclick="cloneVoice()" id="clone-btn">克隆</button>
+                        <button class="btn btn-secondary" onclick="clearClone()">重置</button>
+                    </div>
+                    <div id="clone-loading" class="loading">
+                        <div class="spinner"></div>
+                        <p>正在克隆声音...</p>
+                    </div>
+                    <div id="clone-message" class="message"></div>
+
+                    <div id="cloned-voices" class="cloned-voices">
+                        <h3 style="margin-bottom: 8px;">已克隆的声音</h3>
+                        <div id="cloned-voices-list"></div>
                     </div>
                 </div>
+                <div class="card">
+                    <h3>使用克隆声音合成</h3>
+                    <div class="form-group">
+                        <textarea id="clone-tts-text" rows="4" placeholder="输入要用克隆声音合成的文本...">你好，这是使用克隆声音合成的测试。</textarea>
+                        <div class="button-group">
+                            <button class="btn btn-primary" onclick="synthesizeWithClonedVoice()" id="clone-tts-btn">合成</button>
+                        </div>
+                    </div>
+                    <div id="clone-tts-player" class="audio-player">
+                        <audio id="clone-tts-audio" controls></audio>
+                        <div class="stats">
+                            <div class="stat-item">
+                                <span style="opacity: 0.7;">⏱</span>
+                                <span>处理时间：<span id="clone-tts-time">-</span></span>
+                            </div>
+                            <div class="stat-item">
+                                <span style="opacity: 0.7;">📊</span>
+                                <span>文件大小：<span id="clone-tts-size">-</span></span>
+                            </div>
+                            <div class="player-actions">
+                                <button class="btn btn-tertiary" onclick="downloadAudio('clone-tts')">下载 WAV</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 历史记录 -->
+        <div id="history-tab" class="tab-content">
+            <div class="card">
+                <h3>历史记录</h3>
+                <div class="suggestions" style="margin-bottom:8px;">
+                    <div class="chip" onclick="setHistoryFilter('all')" id="filter-all">全部</div>
+                    <div class="chip" onclick="setHistoryFilter('tts')" id="filter-tts">文本转语音</div>
+                    <div class="chip" onclick="setHistoryFilter('streaming')" id="filter-streaming">流式合成</div>
+                    <div class="chip" onclick="setHistoryFilter('clone-tts')" id="filter-clone">克隆合成</div>
+                </div>
+                <div class="button-group" style="margin-top:0;">
+                    <button class="btn btn-secondary" onclick="clearAllHistory()">清空全部</button>
+                </div>
+                <div id="history-list" style="margin-top:12px;"></div>
             </div>
         </div>
     </div>
@@ -626,13 +782,23 @@
         let clonedVoices = [];
         let currentClonedVoiceId = null;
         let audioBlobs = {};
+        let historyFilter = 'all';
 
         // 页面初始化
         document.addEventListener('DOMContentLoaded', function() {
             initVoices();
             loadClonedVoices();
             initFileUpload();
+            initTheme();
+            initShortcuts();
+            initHistory();
         });
+
+        // 快速填充示例文本
+        function setSample(id, text) {
+            const el = document.getElementById(id);
+            if (el) el.value = text;
+        }
 
         // 初始化音色选择
         function initVoices() {
@@ -676,10 +842,13 @@
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
             
-            const tabIndex = { tts: 0, streaming: 1, clone: 2 }[tab];
+            const tabIndex = { tts: 0, streaming: 1, clone: 2, history: 3 }[tab];
             if (tabIndex !== undefined) {
                 document.querySelectorAll('.tab')[tabIndex].classList.add('active');
                 document.getElementById(`${tab}-tab`).classList.add('active');
+            }
+            if (tab === 'history') {
+                loadAndRenderHistory();
             }
         }
 
@@ -751,6 +920,15 @@
                     
                     showPlayer('tts-player');
                     showMessage('tts-message', 'success', '合成完成！');
+
+                    // 保存历史（本地）
+                    saveHistory('tts', {
+                        text,
+                        voice: currentVoice,
+                        processingTime: data.processingTime,
+                        sampleRate: data.sampleRate || 24000,
+                        size: arrayBuffer.byteLength
+                    }, blob);
                 } else {
                     showMessage('tts-message', 'error', `合成失败：${data.error}`);
                 }
@@ -816,6 +994,15 @@
                             
                             showPlayer('streaming-player');
                             showMessage('streaming-message', 'success', `流式合成完成！首包耗时：${firstChunkTime}ms`);
+
+                            // 保存历史（本地）
+                            saveHistory('streaming', {
+                                text,
+                                voice: currentStreamingVoice,
+                                processingTime: data.processingTime || 0,
+                                sampleRate: 24000,
+                                size: totalSize
+                            }, blob);
                         }
                         setLoading('streaming', false);
                     }
@@ -926,6 +1113,15 @@
                     
                     showPlayer('clone-tts-player');
                     showMessage('clone-message', 'success', '使用克隆声音合成成功！');
+
+                    // 保存历史（本地）
+                    saveHistory('clone-tts', {
+                        text,
+                        voiceId: currentClonedVoiceId,
+                        processingTime: data.processingTime,
+                        sampleRate: data.sampleRate || 24000,
+                        size: arrayBuffer.byteLength
+                    }, blob);
                 } else {
                     showMessage('clone-message', 'error', `合成失败：${data.error}`);
                 }
@@ -965,7 +1161,7 @@
                 item.innerHTML = `
                     <div class="voice-info">
                         <div class="voice-name">${voice.name}</div>
-                        <div class="voice-id">${voice.id}</div>
+                        <div class="voice-id">${voice.id} <button class="copy-btn" onclick="copyText('${voice.id}')">复制</button></div>
                     </div>
                     <button class="use-btn" onclick="selectClonedVoice('${voice.id}')">使用</button>
                 `;
@@ -981,25 +1177,47 @@
 
         // 文件上传处理
         function initFileUpload() {
-            document.getElementById('clone-file').addEventListener('change', function() {
-                const file = this.files[0];
-                const uploadDiv = document.getElementById('file-upload');
-                const uploadText = document.getElementById('upload-text');
-                const fileInfo = document.getElementById('file-info');
-                
+            const drop = document.getElementById('file-upload');
+            const input = document.getElementById('clone-file');
+            const uploadText = document.getElementById('upload-text');
+            const fileInfo = document.getElementById('file-info');
+
+            function render(file) {
                 if (file) {
                     const size = (file.size / 1024).toFixed(1);
                     fileInfo.innerHTML = `
-                        <div style="color: #28a745; margin-bottom: 4px;">✅ ${file.name}</div>
+                        <div style="color: #34c759; margin-bottom: 4px;">✓ ${file.name}</div>
                         <div style="font-size: 12px; color: #6c757d;">${size} KB</div>
                     `;
                     uploadText.style.display = 'none';
                     fileInfo.style.display = 'block';
-                    uploadDiv.classList.add('has-file');
+                    drop.classList.add('has-file');
                 } else {
                     uploadText.style.display = 'block';
                     fileInfo.style.display = 'none';
-                    uploadDiv.classList.remove('has-file');
+                    drop.classList.remove('has-file');
+                }
+            }
+
+            input.addEventListener('change', function() {
+                render(this.files[0]);
+            });
+
+            // Drag & drop
+            ['dragenter','dragover'].forEach(evt => drop.addEventListener(evt, (e) => {
+                e.preventDefault(); e.stopPropagation();
+                drop.style.borderColor = getComputedStyle(document.documentElement).getPropertyValue('--primary');
+            }));
+            ;['dragleave','drop'].forEach(evt => drop.addEventListener(evt, (e) => {
+                e.preventDefault(); e.stopPropagation();
+                drop.style.borderColor = '';
+            }));
+            drop.addEventListener('drop', (e) => {
+                const files = e.dataTransfer.files;
+                if (files && files[0]) {
+                    input.files = files;
+                    const event = new Event('change');
+                    input.dispatchEvent(event);
                 }
             });
         }
@@ -1015,7 +1233,7 @@
             document.getElementById('streaming-text').value = '';
             hideMessage('streaming-message');
             hidePlayer('streaming-player');
-            document.getElementById('streaming-status').classList.remove('active');
+            document.getElementById('streaming-status').classList.add('active');
         }
 
         function clearClone() {
@@ -1064,6 +1282,21 @@
             document.getElementById(id).classList.remove('active');
         }
 
+        // 下载播放器中的音频（WAV）
+        function downloadAudio(type) {
+            const blob = audioBlobs[type];
+            if (!blob) return;
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            const ts = new Date().toISOString().replace(/[:.]/g, '-');
+            a.download = `${type}-${ts}.wav`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+        }
+
         function initStreamingStatus() {
             const statusDiv = document.getElementById('streaming-status');
             statusDiv.classList.add('active');
@@ -1095,6 +1328,216 @@
             }
             
             return combined.buffer;
+        }
+
+        // ========== 历史记录（IndexedDB） ==========
+        let historyDB = null;
+        function initHistory() {
+            const req = indexedDB.open('ttsDemo', 1);
+            req.onupgradeneeded = (e) => {
+                const db = e.target.result;
+                if (!db.objectStoreNames.contains('history')) {
+                    const store = db.createObjectStore('history', { keyPath: 'id', autoIncrement: true });
+                    store.createIndex('type', 'type', { unique: false });
+                    store.createIndex('createdAt', 'createdAt', { unique: false });
+                }
+            };
+            req.onsuccess = (e) => { historyDB = e.target.result; setHistoryFilter('all'); loadAndRenderHistory(); };
+            req.onerror = () => console.warn('IndexedDB 打开失败');
+        }
+
+        function saveHistory(type, meta, blob) {
+            if (!historyDB) return;
+            const tx = historyDB.transaction('history', 'readwrite');
+            const store = tx.objectStore('history');
+            const item = {
+                type,
+                text: meta.text || '',
+                voice: meta.voice || null,
+                voiceId: meta.voiceId || null,
+                processingTime: meta.processingTime || 0,
+                sampleRate: meta.sampleRate || 24000,
+                size: meta.size || 0,
+                audio: blob,
+                createdAt: Date.now()
+            };
+            store.add(item);
+            tx.oncomplete = () => { if (document.getElementById('history-tab').classList.contains('active')) loadAndRenderHistory(); };
+        }
+
+        function getAllHistory(filter) {
+            return new Promise((resolve) => {
+                if (!historyDB) return resolve([]);
+                const tx = historyDB.transaction('history', 'readonly');
+                const store = tx.objectStore('history');
+                const req = store.getAll();
+                req.onsuccess = () => {
+                    let items = req.result || [];
+                    items.sort((a,b) => b.createdAt - a.createdAt);
+                    if (filter && filter !== 'all') items = items.filter(i => i.type === filter);
+                    resolve(items);
+                };
+                req.onerror = () => resolve([]);
+            });
+        }
+
+        async function loadAndRenderHistory() {
+            const list = document.getElementById('history-list');
+            if (!list) return;
+            list.innerHTML = '<div style="color: var(--muted); font-size: 13px;">加载中...</div>';
+            const items = await getAllHistory(historyFilter);
+            renderHistory(items);
+        }
+
+        function ms(n){ return `${n}ms`; }
+        function kb(n){ return `${(n/1024).toFixed(1)} KB`; }
+        function previewText(t){ return t.length > 28 ? t.slice(0,28) + '…' : t; }
+
+        function renderHistory(items) {
+            const list = document.getElementById('history-list');
+            if (!list) return;
+            if (!items.length) {
+                list.innerHTML = '<div style="color: var(--muted); font-size: 13px;">暂无历史记录</div>';
+                return;
+            }
+            list.innerHTML = '';
+            items.forEach(item => {
+                const row = document.createElement('div');
+                row.className = 'cloned-voice-item';
+                const created = new Date(item.createdAt).toLocaleString();
+                const label = item.type === 'tts' ? 'TTS' : (item.type === 'streaming' ? '流式' : '克隆');
+                const voiceLabel = item.voiceId ? `ID:${item.voiceId}` : (item.voice ? `音色:${item.voice}` : '');
+                const url = URL.createObjectURL(item.audio);
+                row.innerHTML = `
+                    <div class=\"voice-info\" style=\"flex:1;\">
+                        <div class=\"voice-name\">${label} · ${previewText(item.text || '')}</div>
+                        <div class=\"voice-id\" title=\"${created}\">${voiceLabel} · ${kb(item.size)} · ${ms(item.processingTime)} · ${created}</div>
+                    </div>
+                    <div class=\"history-actions\" style=\"display:flex; gap:6px; align-items:center;\">
+                        <audio src=\"${url}\" controls style=\"height:32px; max-width:180px;\"></audio>
+                        <button class=\"use-btn\" onclick='reuseHistory(${JSON.stringify("" )}+${0})'>复用</button>
+                        <button class=\"btn-tertiary\" style=\"padding:6px 10px; font-size:12px;\" onclick='downloadHistory(${JSON.stringify("" )}+${0})'>下载</button>
+                        <button class=\"btn-tertiary\" style=\"padding:6px 10px; font-size:12px;\" onclick='deleteHistory(${JSON.stringify("" )}+${0})'>删除</button>
+                    </div>
+                `;
+                // fix onclick with id numeric (avoid escaping issues)
+                row.querySelector('.use-btn').setAttribute('onclick', `reuseHistory(${item.id})`);
+                row.querySelectorAll('.btn-tertiary')[0].setAttribute('onclick', `downloadHistory(${item.id})`);
+                row.querySelectorAll('.btn-tertiary')[1].setAttribute('onclick', `deleteHistory(${item.id})`);
+                list.appendChild(row);
+            });
+        }
+
+        function setHistoryFilter(f) {
+            historyFilter = f;
+            document.querySelectorAll('#history-tab .chip').forEach(ch => ch.style.borderColor = 'var(--border)');
+            const map = { all: '#filter-all', tts: '#filter-tts', streaming: '#filter-streaming', 'clone-tts': '#filter-clone' };
+            const el = document.querySelector(map[f] || '#filter-all');
+            if (el) el.style.borderColor = 'var(--primary)';
+            loadAndRenderHistory();
+        }
+
+        function reuseHistory(id) {
+            const tx = historyDB.transaction('history', 'readonly');
+            tx.objectStore('history').get(id).onsuccess = (e) => {
+                const item = e.target.result; if (!item) return;
+                if (item.type === 'tts') {
+                    document.getElementById('tts-text').value = item.text || '';
+                    if (item.voice) { currentVoice = item.voice; reselectVoice('tts', item.voice); }
+                    switchTab('tts');
+                } else if (item.type === 'streaming') {
+                    document.getElementById('streaming-text').value = item.text || '';
+                    if (item.voice) { currentStreamingVoice = item.voice; reselectVoice('streaming', item.voice); }
+                    switchTab('streaming');
+                } else {
+                    document.getElementById('clone-tts-text').value = item.text || '';
+                    if (item.voiceId) currentClonedVoiceId = item.voiceId;
+                    switchTab('clone');
+                }
+            };
+        }
+
+        function reselectVoice(type, voiceId) {
+            const container = document.getElementById(`${type}-voices`);
+            if (!container) return;
+            container.querySelectorAll('.voice-item').forEach(el => {
+                if (el.textContent === voiceId || el.textContent === (voices.find(v=>v.id===voiceId)?.name)) {
+                    container.querySelectorAll('.voice-item').forEach(i=>i.classList.remove('selected'));
+                    el.classList.add('selected');
+                }
+            });
+        }
+
+        function downloadHistory(id) {
+            const tx = historyDB.transaction('history', 'readonly');
+            tx.objectStore('history').get(id).onsuccess = (e) => {
+                const item = e.target.result; if (!item) return;
+                const url = URL.createObjectURL(item.audio);
+                const a = document.createElement('a');
+                const ts = new Date(item.createdAt).toISOString().replace(/[:.]/g,'-');
+                a.href = url; a.download = `${item.type}-${ts}.wav`; a.click();
+                URL.revokeObjectURL(url);
+            };
+        }
+
+        function deleteHistory(id) {
+            const tx = historyDB.transaction('history', 'readwrite');
+            tx.objectStore('history').delete(id);
+            tx.oncomplete = () => loadAndRenderHistory();
+        }
+
+        function clearAllHistory() {
+            if (!confirm('确认清空所有历史记录？')) return;
+            const tx = historyDB.transaction('history', 'readwrite');
+            tx.objectStore('history').clear();
+            tx.oncomplete = () => loadAndRenderHistory();
+        }
+
+        // 主题切换
+        function initTheme() {
+            const saved = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const shouldDark = saved ? saved === 'dark' : prefersDark;
+            if (shouldDark) {
+                document.body.classList.add('dark');
+            }
+            const btn = document.getElementById('theme-toggle');
+            if (btn) btn.textContent = document.body.classList.contains('dark') ? '☀️ 浅色' : '🌙 深色';
+        }
+        function toggleTheme() {
+            document.body.classList.toggle('dark');
+            const isDark = document.body.classList.contains('dark');
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+            const btn = document.getElementById('theme-toggle');
+            if (btn) btn.textContent = isDark ? '☀️ 浅色' : '🌙 深色';
+        }
+
+        // 快捷键：Cmd/Ctrl+Enter 触发合成
+        function initShortcuts() {
+            const bind = (id, handler) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                el.addEventListener('keydown', (e) => {
+                    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                        e.preventDefault();
+                        handler();
+                    }
+                });
+            };
+            bind('tts-text', synthesizeTTS);
+            bind('streaming-text', synthesizeStreaming);
+            bind('clone-tts-text', synthesizeWithClonedVoice);
+        }
+
+        // 复制到剪贴板
+        async function copyText(text) {
+            try {
+                await navigator.clipboard.writeText(text);
+                showMessage('clone-message', 'success', '已复制到剪贴板');
+                setTimeout(() => hideMessage('clone-message'), 1200);
+            } catch (e) {
+                showMessage('clone-message', 'error', '复制失败');
+            }
         }
     </script>
 </body>
