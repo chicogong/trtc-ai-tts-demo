@@ -35,6 +35,7 @@ TENCENTCLOUD_SECRET_KEY=your_secret_key
 API_KEY=your_api_key
 SDK_APP_ID=your_sdk_app_id
 PORT=3000  # 可选，默认3000
+VOICE_LIST=voice1,voice2,voice3  # 配置可用的音色ID列表
 ```
 
 ### 4. 启动服务
@@ -76,7 +77,7 @@ trtc-ai-tts-demo/
 ```json
 {
   "text": "要转换的文本内容",
-  "voice": "妮卡"
+  "voice": "voice_id"  // 从环境变量配置的音色ID
 }
 ```
 
@@ -98,7 +99,7 @@ trtc-ai-tts-demo/
 - `text`: 要转换的文本内容（URL编码）
 - `voice`: 音色ID（URL编码）
 
-**示例**: `GET /api/tts/stream?text=你好世界&voice=妮卡`
+**示例**: `GET /api/tts/stream?text=你好世界&voice=voice_id`
 
 ### 3. 声音克隆
 
@@ -141,12 +142,16 @@ trtc-ai-tts-demo/
 - **时长**：5-12秒（推荐）
 - **内容**：清晰人声，无背景噪音
 
-## 可用音色
+## 音色配置
 
 ### 预设音色
 
-**女声**：xxx
-**男声**：xxx
+系统音色通过环境变量 `VOICE_LIST` 配置，支持逗号分隔的音色ID列表：
+
+```bash
+# .env 文件示例
+VOICE_LIST=voice1,voice2,voice3
+```
 
 ### 克隆音色
 
@@ -184,21 +189,16 @@ eventSource.onmessage = (event) => {
 
 ## 开发指南
 
-### 添加新音色
+### 配置音色
 
-在 `server.js` 中的音色列表添加新的音色配置：
+通过环境变量配置可用的音色列表：
 
-```javascript
-app.get('/api/voices', (_, res) => {
-  res.json({
-    success: true,
-    voices: [
-      { id: '新音色ID', name: '新音色名称', gender: 'male/female' },
-      // ...
-    ]
-  });
-});
+```bash
+# .env 文件
+VOICE_LIST=voice_id_1,voice_id_2,voice_id_3
 ```
+
+音色列表会自动通过 `/api/voices` 接口提供给前端使用。
 
 ### 自定义采样率
 
