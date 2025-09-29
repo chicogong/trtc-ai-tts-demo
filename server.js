@@ -395,14 +395,13 @@ app.get('/api/cloned-voices', (_, res) => {
   }
 });
 
+// 5. Get available voices list (从环境变量读取)
 app.get('/api/voices', (_, res) => {
   // 从环境变量读取音色列表，支持逗号分隔
   let voices = [];
 
   if (process.env.VOICE_LIST) {
     voices = process.env.VOICE_LIST.split(',').map(v => v.trim()).filter(v => v);
-  } else {
-    voices = [];
   }
 
   res.json({
@@ -413,7 +412,7 @@ app.get('/api/voices', (_, res) => {
 
 
 // Error handling
-app.use((err, req, res, next) => {
+app.use((err, _, res) => {
   console.error('Server error:', err);
   res.status(500).json({
     error: err.message || '服务器内部错误'
