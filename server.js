@@ -4,12 +4,6 @@ const dotenv = require('dotenv');
 const path = require('path');
 const multer = require('multer');
 const fs = require('fs');
-// Simple logging helper
-const log = {
-  info: (msg, data) => console.log(`[INFO] ${msg}`, data || ''),
-  error: (msg, error) => console.error(`[ERROR] ${msg}`, error?.message || error || ''),
-  warn: (msg, data) => console.warn(`[WARN] ${msg}`, data || '')
-};
 
 // 加载腾讯云SDK
 const tencentcloud = require("tencentcloud-sdk-nodejs-trtc");
@@ -75,7 +69,7 @@ app.post('/api/tts', async (req, res) => {
     }
     
     const startTime = Date.now();
-    log.info(`TTS request: "${text.substring(0, 30)}...", voice: ${selectedVoice}`);
+    console.log(`TTS request: "${text.substring(0, 30)}...", voice: ${selectedVoice}`);
     
     const client = createTrtcClient();
     const params = {
@@ -92,7 +86,7 @@ app.post('/api/tts', async (req, res) => {
     
     if (response.Audio) {
       const audioSize = Buffer.from(response.Audio, 'base64').length;
-      log.info(`TTS response: ${audioSize} bytes, ${processingTime}ms`);
+      console.log(`TTS response: ${audioSize} bytes, ${processingTime}ms`);
       
       res.json({
         success: true,
@@ -105,7 +99,7 @@ app.post('/api/tts', async (req, res) => {
     }
     
   } catch (error) {
-    log.error('TTS error:', error);
+    console.error('TTS error:', error);
     res.status(500).json({
       success: false,
       error: error.message || '服务器错误'
@@ -127,7 +121,7 @@ app.get('/api/tts/stream', async (req, res) => {
   }
   
   const requestStartTime = Date.now();
-  log.info(`Streaming TTS: "${text.substring(0, 30)}...", voice: ${voice}`);
+  console.log(`Streaming TTS: "${text.substring(0, 30)}...", voice: ${voice}`);
 
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
@@ -186,7 +180,7 @@ app.get('/api/tts/stream', async (req, res) => {
         }
       }
       
-      log.info(`Streaming response: ${audioSize} bytes, first chunk: ${firstChunkTime}ms, total: ${totalProcessingTime}ms`);
+      console.log(`Streaming response: ${audioSize} bytes, first chunk: ${firstChunkTime}ms, total: ${totalProcessingTime}ms`);
     }
     
     res.write(`data: ${JSON.stringify({ 
@@ -195,7 +189,7 @@ app.get('/api/tts/stream', async (req, res) => {
     })}\n\n`);
     
   } catch (error) {
-    log.error('Streaming TTS error:', error);
+    console.error('Streaming TTS error:', error);
     res.write(`data: ${JSON.stringify({ 
       error: error.message || '流式TTS失败',
       success: false
@@ -222,7 +216,7 @@ app.post('/api/voice-clone', upload.single('audioFile'), async (req, res) => {
       });
     }
     
-    log.info(`Voice clone: "${name}", ${(req.file.size / 1024).toFixed(1)}KB`);
+    console.log(`Voice clone: "${name}", ${(req.file.size / 1024).toFixed(1)}KB`);
     
     const audioBuffer = req.file.buffer;
     if (audioBuffer.length > 8) {
@@ -232,10 +226,10 @@ app.post('/api/voice-clone', upload.single('audioFile'), async (req, res) => {
       const duration = dataSize / (sampleRate * channels * 2);
       
       if (sampleRate !== 16000) {
-        log.warn(`Audio sample rate: ${sampleRate}Hz (16kHz recommended)`);
+        console.warn(`Audio sample rate: ${sampleRate}Hz (16kHz recommended)`);
       }
       if (duration < 5 || duration > 12) {
-        log.warn(`Audio duration: ${duration.toFixed(1)}s (5-12s recommended)`);
+        console.warn(`Audio duration: ${duration.toFixed(1)}s (5-12s recommended)`);
       }
     }
     
@@ -253,7 +247,7 @@ app.post('/api/voice-clone', upload.single('audioFile'), async (req, res) => {
     const response = await client.VoiceClone(params);
     
     if (response.VoiceId) {
-      log.info(`Voice clone success: ${response.VoiceId}`);
+      console.log(`Voice clone success: ${response.VoiceId}`);
       
       // 保存克隆信息到文件
       const cloneInfo = {
@@ -291,7 +285,7 @@ app.post('/api/voice-clone', upload.single('audioFile'), async (req, res) => {
     }
     
   } catch (error) {
-    log.error('Voice clone error:', error);
+    console.error('Voice clone error:', error);
     res.status(500).json({
       success: false,
       error: error.message || '声音克隆失败'
@@ -320,35 +314,13 @@ app.get('/api/cloned-voices', (_, res) => {
 
 // Error handling
 app.use((err, req, res, next) => {
-  log.error('Server error:', err);
+  console.error('Server error:', err);
   res.status(500).json({
     error: err.message || '服务器内部错误'
   });
 });
 
 // Start server
-const server = app.listen(port, () => {
-  console.log(`\n🚀 TTS Server is running on http://localhost:${port}`);
-  console.log(`\n📌 API Endpoints:`);
-  console.log('   POST /api/tts           - 文本转语音');
-  console.log('   GET  /api/tts/stream    - 流式TTS');
-  console.log('   POST /api/voice-clone   - 声音克隆');
-  console.log('   GET  /api/cloned-voices - 克隆音色列表\n');
-});
-
-// Graceful shutdown
-process.on('SIGTERM', () => {
-  console.log('\n📛 Shutting down...');
-  server.close(() => {
-    console.log('✅ Server closed');
-    process.exit(0);
-  });
-});
-
-process.on('SIGINT', () => {
-  console.log('\n📛 Shutting down...');
-  server.close(() => {
-    console.log('✅ Server closed');
-    process.exit(0);
-  });
+app.listen(port, () => {
+  console.log(`🚀 TTS Server is running on http://localhost:${port}`);
 });
