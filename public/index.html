@@ -59,6 +59,9 @@
             font-weight: 500;
             color: #6c757d;
             transition: all 0.3s;
+            border: none;
+            background: none;
+            font-size: 14px;
         }
 
         .tab:hover {
@@ -112,12 +115,14 @@
             border-radius: 8px;
             font-size: 14px;
             transition: border-color 0.3s;
+            font-family: inherit;
         }
 
         .form-group textarea:focus,
         .form-group input:focus {
             outline: none;
             border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
         }
 
         .voice-grid {
@@ -165,6 +170,7 @@
             font-weight: 500;
             cursor: pointer;
             transition: all 0.3s;
+            font-family: inherit;
         }
 
         .btn-primary {
@@ -172,7 +178,7 @@
             color: white;
         }
 
-        .btn-primary:hover {
+        .btn-primary:hover:not(:disabled) {
             background: #5a6fd8;
             transform: translateY(-1px);
             box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
@@ -184,14 +190,14 @@
             border: 1px solid #e9ecef;
         }
 
-        .btn-secondary:hover {
+        .btn-secondary:hover:not(:disabled) {
             background: #e9ecef;
         }
 
         .btn:disabled {
             opacity: 0.5;
             cursor: not-allowed;
-            transform: none;
+            transform: none !important;
         }
 
         .loading {
@@ -416,6 +422,11 @@
             .button-group {
                 flex-direction: column;
             }
+            
+            .stats {
+                flex-direction: column;
+                gap: 8px;
+            }
         }
     </style>
 </head>
@@ -462,11 +473,11 @@
                 <div class="stats">
                     <div class="stat-item">
                         <span>⏱️</span>
-                        <span id="tts-time">-</span>
+                        <span>处理时间：<span id="tts-time">-</span></span>
                     </div>
                     <div class="stat-item">
                         <span>📊</span>
-                        <span id="tts-size">-</span>
+                        <span>文件大小：<span id="tts-size">-</span></span>
                     </div>
                 </div>
             </div>
@@ -523,11 +534,11 @@
                 <div class="stats">
                     <div class="stat-item">
                         <span>⚡</span>
-                        <span id="streaming-time">-</span>
+                        <span>处理时间：<span id="streaming-time">-</span></span>
                     </div>
                     <div class="stat-item">
                         <span>📊</span>
-                        <span id="streaming-size">-</span>
+                        <span>文件大小：<span id="streaming-size">-</span></span>
                     </div>
                 </div>
             </div>
@@ -584,11 +595,11 @@
                 <div class="stats">
                     <div class="stat-item">
                         <span>⏱️</span>
-                        <span id="clone-tts-time">-</span>
+                        <span>处理时间：<span id="clone-tts-time">-</span></span>
                     </div>
                     <div class="stat-item">
                         <span>📊</span>
-                        <span id="clone-tts-size">-</span>
+                        <span>文件大小：<span id="clone-tts-size">-</span></span>
                     </div>
                 </div>
             </div>
@@ -596,33 +607,35 @@
     </div>
 
     <script>
-        // 音色列表 (硬编码)
+        // 音色列表
         const voices = [
-            { id: '妮卡', name: '妮卡', gender: 'female' },
-            { id: '塔菲', name: '塔菲', gender: 'female' },
-            { id: '芙洛', name: '芙洛', gender: 'female' },
-            { id: '希琳', name: '希琳', gender: 'female' },
-            { id: '玉桃', name: '玉桃', gender: 'female' },
-            { id: '死盖', name: '死盖', gender: 'male' },
-            { id: '老番茄', name: '老番茄', gender: 'male' },
-            { id: '索恩', name: '索恩', gender: 'male' },
-            { id: '雷奥', name: '雷奥', gender: 'male' }
+            { id: '妮卡', name: '妮卡' },
+            { id: '塔菲', name: '塔菲' },
+            { id: '芙洛', name: '芙洛' },
+            { id: '希琳', name: '希琳' },
+            { id: '玉桃', name: '玉桃' },
+            { id: '死盖', name: '死盖' },
+            { id: '老番茄', name: '老番茄' },
+            { id: '索恩', name: '索恩' },
+            { id: '雷奥', name: '雷奥' }
         ];
 
+        // 全局变量
         let currentVoice = '妮卡';
         let currentStreamingVoice = '妮卡';
         let clonedVoices = [];
         let currentClonedVoiceId = null;
         let audioBlobs = {};
 
-        // 初始化页面
+        // 页面初始化
         document.addEventListener('DOMContentLoaded', function() {
-            initializeVoices();
+            initVoices();
             loadClonedVoices();
+            initFileUpload();
         });
 
         // 初始化音色选择
-        function initializeVoices() {
+        function initVoices() {
             const ttsContainer = document.getElementById('tts-voices');
             const streamingContainer = document.getElementById('streaming-voices');
             
@@ -631,25 +644,25 @@
                 const ttsItem = document.createElement('div');
                 ttsItem.className = voice.id === currentVoice ? 'voice-item selected' : 'voice-item';
                 ttsItem.textContent = voice.name;
-                ttsItem.onclick = () => selectVoice('tts', voice.id);
+                ttsItem.onclick = () => selectVoice('tts', voice.id, ttsItem);
                 ttsContainer.appendChild(ttsItem);
 
                 // 流式音色
                 const streamingItem = document.createElement('div');
                 streamingItem.className = voice.id === currentStreamingVoice ? 'voice-item selected' : 'voice-item';
                 streamingItem.textContent = voice.name;
-                streamingItem.onclick = () => selectVoice('streaming', voice.id);
+                streamingItem.onclick = () => selectVoice('streaming', voice.id, streamingItem);
                 streamingContainer.appendChild(streamingItem);
             });
         }
 
         // 选择音色
-        function selectVoice(type, voiceId) {
+        function selectVoice(type, voiceId, element) {
             const container = document.getElementById(`${type}-voices`);
             container.querySelectorAll('.voice-item').forEach(item => {
                 item.classList.remove('selected');
             });
-            event.target.classList.add('selected');
+            element.classList.add('selected');
             
             if (type === 'tts') {
                 currentVoice = voiceId;
@@ -660,20 +673,13 @@
 
         // 切换标签页
         function switchTab(tab) {
-            // 移除所有active类
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
             
-            // 添加active类到选中的标签页
-            if (tab === 'tts') {
-                document.querySelectorAll('.tab')[0].classList.add('active');
-                document.getElementById('tts-tab').classList.add('active');
-            } else if (tab === 'streaming') {
-                document.querySelectorAll('.tab')[1].classList.add('active');
-                document.getElementById('streaming-tab').classList.add('active');
-            } else if (tab === 'clone') {
-                document.querySelectorAll('.tab')[2].classList.add('active');
-                document.getElementById('clone-tab').classList.add('active');
+            const tabIndex = { tts: 0, streaming: 1, clone: 2 }[tab];
+            if (tabIndex !== undefined) {
+                document.querySelectorAll('.tab')[tabIndex].classList.add('active');
+                document.getElementById(`${tab}-tab`).classList.add('active');
             }
         }
 
@@ -721,10 +727,7 @@
                 return;
             }
 
-            showLoading('tts-loading', true);
-            hideMessage('tts-message');
-            hidePlayer('tts-player');
-            disableButton('tts-btn', true);
+            setLoading('tts', true);
 
             try {
                 const response = await fetch('/api/tts', {
@@ -736,15 +739,10 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    const audioData = atob(data.audio);
-                    const arrayBuffer = new ArrayBuffer(audioData.length);
-                    const view = new Uint8Array(arrayBuffer);
-                    for (let i = 0; i < audioData.length; i++) {
-                        view[i] = audioData.charCodeAt(i);
-                    }
-                    
+                    const arrayBuffer = base64ToArrayBuffer(data.audio);
                     const blob = pcmToWav(arrayBuffer, data.sampleRate || 24000);
                     const audioUrl = URL.createObjectURL(blob);
+                    
                     audioBlobs['tts'] = blob;
                     
                     document.getElementById('tts-audio').src = audioUrl;
@@ -759,8 +757,7 @@
             } catch (error) {
                 showMessage('tts-message', 'error', `请求失败：${error.message}`);
             } finally {
-                showLoading('tts-loading', false);
-                disableButton('tts-btn', false);
+                setLoading('tts', false);
             }
         }
 
@@ -772,18 +769,8 @@
                 return;
             }
 
-            showLoading('streaming-loading', true);
-            hideMessage('streaming-message');
-            hidePlayer('streaming-player');
-            disableButton('streaming-btn', true);
-            
-            const statusDiv = document.getElementById('streaming-status');
-            statusDiv.classList.add('active');
-            
-            document.getElementById('connection-status').textContent = '连接中...';
-            document.getElementById('chunks-count').textContent = '0';
-            document.getElementById('first-chunk-time').textContent = '-';
-            document.getElementById('total-size').textContent = '0 KB';
+            setLoading('streaming', true);
+            initStreamingStatus();
 
             let chunks = 0;
             let totalSize = 0;
@@ -801,18 +788,12 @@
                         document.getElementById('connection-status').textContent = '接收中...';
                         document.getElementById('chunks-count').textContent = chunks;
                         
-                        // 记录首包耗时
                         if (data.firstChunkTime && firstChunkTime === null) {
                             firstChunkTime = data.firstChunkTime;
                             document.getElementById('first-chunk-time').textContent = `${firstChunkTime}ms`;
                         }
                         
-                        const audioData = atob(data.audio);
-                        const arrayBuffer = new ArrayBuffer(audioData.length);
-                        const view = new Uint8Array(arrayBuffer);
-                        for (let i = 0; i < audioData.length; i++) {
-                            view[i] = audioData.charCodeAt(i);
-                        }
+                        const arrayBuffer = base64ToArrayBuffer(data.audio);
                         audioChunks.push(arrayBuffer);
                         totalSize += arrayBuffer.byteLength;
                         document.getElementById('total-size').textContent = `${(totalSize / 1024).toFixed(1)} KB`;
@@ -823,47 +804,37 @@
                         document.getElementById('connection-status').textContent = '完成';
                         
                         if (audioChunks.length > 0) {
-                            const totalLength = audioChunks.reduce((acc, chunk) => acc + chunk.byteLength, 0);
-                            const combined = new Uint8Array(totalLength);
-                            let offset = 0;
-                            for (const chunk of audioChunks) {
-                                combined.set(new Uint8Array(chunk), offset);
-                                offset += chunk.byteLength;
-                            }
-                            
-                            const blob = pcmToWav(combined.buffer, 24000);
+                            const combinedAudio = combineAudioChunks(audioChunks);
+                            const blob = pcmToWav(combinedAudio, 24000);
                             const audioUrl = URL.createObjectURL(blob);
+                            
                             audioBlobs['streaming'] = blob;
                             
                             document.getElementById('streaming-audio').src = audioUrl;
                             document.getElementById('streaming-time').textContent = `总计 ${data.processingTime || '-'}ms`;
-                            document.getElementById('streaming-size').textContent = `${(totalLength / 1024).toFixed(1)} KB`;
+                            document.getElementById('streaming-size').textContent = `${(totalSize / 1024).toFixed(1)} KB`;
                             
                             showPlayer('streaming-player');
                             showMessage('streaming-message', 'success', `流式合成完成！首包耗时：${firstChunkTime}ms`);
                         }
-                        showLoading('streaming-loading', false);
-                        disableButton('streaming-btn', false);
+                        setLoading('streaming', false);
                     }
                     
                     if (data.error) {
                         eventSource.close();
                         showMessage('streaming-message', 'error', `合成失败：${data.error}`);
-                        showLoading('streaming-loading', false);
-                        disableButton('streaming-btn', false);
+                        setLoading('streaming', false);
                     }
                 };
                 
                 eventSource.onerror = () => {
                     eventSource.close();
                     showMessage('streaming-message', 'error', '连接断开');
-                    showLoading('streaming-loading', false);
-                    disableButton('streaming-btn', false);
+                    setLoading('streaming', false);
                 };
             } catch (error) {
                 showMessage('streaming-message', 'error', `请求失败：${error.message}`);
-                showLoading('streaming-loading', false);
-                disableButton('streaming-btn', false);
+                setLoading('streaming', false);
             }
         }
 
@@ -882,9 +853,7 @@
                 return;
             }
 
-            showLoading('clone-loading', true);
-            hideMessage('clone-message');
-            disableButton('clone-btn', true);
+            setLoading('clone', true);
 
             try {
                 const formData = new FormData();
@@ -915,8 +884,7 @@
             } catch (error) {
                 showMessage('clone-message', 'error', `请求失败：${error.message}`);
             } finally {
-                showLoading('clone-loading', false);
-                disableButton('clone-btn', false);
+                setLoading('clone', false);
             }
         }
 
@@ -933,10 +901,8 @@
                 return;
             }
 
-            showLoading('clone-loading', true);
-            hideMessage('clone-message');
+            setLoading('clone', true);
             hidePlayer('clone-tts-player');
-            disableButton('clone-tts-btn', true);
 
             try {
                 const response = await fetch('/api/tts', {
@@ -948,15 +914,10 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    const audioData = atob(data.audio);
-                    const arrayBuffer = new ArrayBuffer(audioData.length);
-                    const view = new Uint8Array(arrayBuffer);
-                    for (let i = 0; i < audioData.length; i++) {
-                        view[i] = audioData.charCodeAt(i);
-                    }
-                    
+                    const arrayBuffer = base64ToArrayBuffer(data.audio);
                     const blob = pcmToWav(arrayBuffer, data.sampleRate || 24000);
                     const audioUrl = URL.createObjectURL(blob);
+                    
                     audioBlobs['clone-tts'] = blob;
                     
                     document.getElementById('clone-tts-audio').src = audioUrl;
@@ -971,8 +932,7 @@
             } catch (error) {
                 showMessage('clone-message', 'error', `请求失败：${error.message}`);
             } finally {
-                showLoading('clone-loading', false);
-                disableButton('clone-tts-btn', false);
+                setLoading('clone', false);
             }
         }
 
@@ -1020,27 +980,29 @@
         }
 
         // 文件上传处理
-        document.getElementById('clone-file').addEventListener('change', function() {
-            const file = this.files[0];
-            const uploadDiv = document.getElementById('file-upload');
-            const uploadText = document.getElementById('upload-text');
-            const fileInfo = document.getElementById('file-info');
-            
-            if (file) {
-                const size = (file.size / 1024).toFixed(1);
-                fileInfo.innerHTML = `
-                    <div style="color: #28a745; margin-bottom: 4px;">✅ ${file.name}</div>
-                    <div style="font-size: 12px; color: #6c757d;">${size} KB</div>
-                `;
-                uploadText.style.display = 'none';
-                fileInfo.style.display = 'block';
-                uploadDiv.classList.add('has-file');
-            } else {
-                uploadText.style.display = 'block';
-                fileInfo.style.display = 'none';
-                uploadDiv.classList.remove('has-file');
-            }
-        });
+        function initFileUpload() {
+            document.getElementById('clone-file').addEventListener('change', function() {
+                const file = this.files[0];
+                const uploadDiv = document.getElementById('file-upload');
+                const uploadText = document.getElementById('upload-text');
+                const fileInfo = document.getElementById('file-info');
+                
+                if (file) {
+                    const size = (file.size / 1024).toFixed(1);
+                    fileInfo.innerHTML = `
+                        <div style="color: #28a745; margin-bottom: 4px;">✅ ${file.name}</div>
+                        <div style="font-size: 12px; color: #6c757d;">${size} KB</div>
+                    `;
+                    uploadText.style.display = 'none';
+                    fileInfo.style.display = 'block';
+                    uploadDiv.classList.add('has-file');
+                } else {
+                    uploadText.style.display = 'block';
+                    fileInfo.style.display = 'none';
+                    uploadDiv.classList.remove('has-file');
+                }
+            });
+        }
 
         // 清空函数
         function clearTTS() {
@@ -1068,12 +1030,18 @@
         }
 
         // 工具函数
-        function showLoading(id, show) {
-            const element = document.getElementById(id);
+        function setLoading(type, show) {
+            const button = document.getElementById(`${type}-btn`);
+            const loading = document.getElementById(`${type}-loading`);
+            
             if (show) {
-                element.classList.add('active');
+                loading.classList.add('active');
+                hideMessage(`${type}-message`);
+                if (type !== 'clone') hidePlayer(`${type}-player`);
+                button.disabled = true;
             } else {
-                element.classList.remove('active');
+                loading.classList.remove('active');
+                button.disabled = false;
             }
         }
 
@@ -1096,8 +1064,37 @@
             document.getElementById(id).classList.remove('active');
         }
 
-        function disableButton(id, disabled) {
-            document.getElementById(id).disabled = disabled;
+        function initStreamingStatus() {
+            const statusDiv = document.getElementById('streaming-status');
+            statusDiv.classList.add('active');
+            
+            document.getElementById('connection-status').textContent = '连接中...';
+            document.getElementById('chunks-count').textContent = '0';
+            document.getElementById('first-chunk-time').textContent = '-';
+            document.getElementById('total-size').textContent = '0 KB';
+        }
+
+        function base64ToArrayBuffer(base64) {
+            const audioData = atob(base64);
+            const arrayBuffer = new ArrayBuffer(audioData.length);
+            const view = new Uint8Array(arrayBuffer);
+            for (let i = 0; i < audioData.length; i++) {
+                view[i] = audioData.charCodeAt(i);
+            }
+            return arrayBuffer;
+        }
+
+        function combineAudioChunks(chunks) {
+            const totalLength = chunks.reduce((acc, chunk) => acc + chunk.byteLength, 0);
+            const combined = new Uint8Array(totalLength);
+            let offset = 0;
+            
+            for (const chunk of chunks) {
+                combined.set(new Uint8Array(chunk), offset);
+                offset += chunk.byteLength;
+            }
+            
+            return combined.buffer;
         }
     </script>
 </body>
