@@ -34,7 +34,7 @@ TENCENTCLOUD_SECRET_ID=your_secret_id
 TENCENTCLOUD_SECRET_KEY=your_secret_key
 API_KEY=your_api_key
 SDK_APP_ID=your_sdk_app_id
-PORT=3001  # 可选，默认3001
+PORT=3000  # 可选，默认3000
 ```
 
 ### 4. 启动服务
@@ -47,7 +47,7 @@ npm start
 npm run dev
 ```
 
-服务启动后，访问 http://localhost:3001 即可使用 Web 界面。
+服务启动后，访问 http://localhost:3000 即可使用 Web 界面。
 
 ## 项目结构
 
