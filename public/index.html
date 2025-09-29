@@ -764,29 +764,18 @@
     </div>
 
     <script>
-        // 音色列表
-        const voices = [
-            { id: '妮卡', name: '妮卡' },
-            { id: '塔菲', name: '塔菲' },
-            { id: '芙洛', name: '芙洛' },
-            { id: '希琳', name: '希琳' },
-            { id: '玉桃', name: '玉桃' },
-            { id: '死盖', name: '死盖' },
-            { id: '老番茄', name: '老番茄' },
-            { id: '索恩', name: '索恩' },
-            { id: '雷奥', name: '雷奥' }
-        ];
-
         // 全局变量
-        let currentVoice = '妮卡';
-        let currentStreamingVoice = '妮卡';
+        let voices = []; // 音色列表从后台获取
+        let currentVoice = ''; // 默认为空，从服务端获取
+        let currentStreamingVoice = ''; // 默认为空，从服务端获取
         let clonedVoices = [];
         let currentClonedVoiceId = null;
         let audioBlobs = {};
         let historyFilter = 'all';
 
         // 页面初始化
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', async function() {
+            await loadAvailableVoices(); // 先加载音色列表
             initVoices();
             loadClonedVoices();
             initFileUpload();
@@ -794,6 +783,49 @@
             initShortcuts();
             initHistory();
         });
+
+        // 从后台加载可用音色列表
+        async function loadAvailableVoices() {
+            try {
+                const response = await fetch('/api/voices');
+                const data = await response.json();
+
+                if (!data.success) {
+                    console.error('Failed to load voices from server');
+                    showMessage('tts-message', 'error', '加载音色列表失败');
+                    return;
+                }
+
+                if (!data.voices || data.voices.length === 0) {
+                    console.warn('No voices configured on server');
+                    showMessage('tts-message', 'info', '服务器未配置音色列表，请联系管理员在环境变量中配置 VOICE_LIST');
+                    // 隐藏音色选择区域或显示提示
+                    const ttsVoicesContainer = document.getElementById('tts-voices');
+                    const streamingVoicesContainer = document.getElementById('streaming-voices');
+                    if (ttsVoicesContainer) {
+                        ttsVoicesContainer.innerHTML = '<div style="color: var(--muted); font-size: 13px;">暂无可用音色</div>';
+                    }
+                    if (streamingVoicesContainer) {
+                        streamingVoicesContainer.innerHTML = '<div style="color: var(--muted); font-size: 13px;">暂无可用音色</div>';
+                    }
+                    return;
+                }
+
+                // 将字符串数组转换为对象数组，以兼容现有代码
+                voices = data.voices.map(id => ({
+                    id: id,
+                    name: id
+                }));
+                console.log(`Loaded ${voices.length} voices from server`);
+
+                // 不设置默认音色，让用户自行选择
+                // currentVoice 和 currentStreamingVoice 保持为空
+                console.log('No default voice set - user must select a voice');
+            } catch (error) {
+                console.error('Error loading voices:', error);
+                showMessage('tts-message', 'error', '加载音色列表失败，请检查网络连接');
+            }
+        }
 
         // 快速填充示例文本
         function setSample(id, text) {
@@ -805,7 +837,11 @@
         function initVoices() {
             const ttsContainer = document.getElementById('tts-voices');
             const streamingContainer = document.getElementById('streaming-voices');
-            
+
+            // 清空现有内容
+            ttsContainer.innerHTML = '';
+            streamingContainer.innerHTML = '';
+
             voices.forEach(voice => {
                 // TTS音色
                 const ttsItem = document.createElement('div');

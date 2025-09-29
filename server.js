@@ -395,6 +395,22 @@ app.get('/api/cloned-voices', (_, res) => {
   }
 });
 
+app.get('/api/voices', (_, res) => {
+  // 从环境变量读取音色列表，支持逗号分隔
+  let voices = [];
+
+  if (process.env.VOICE_LIST) {
+    voices = process.env.VOICE_LIST.split(',').map(v => v.trim()).filter(v => v);
+  } else {
+    voices = [];
+  }
+
+  res.json({
+    success: true,
+    voices: voices
+  });
+});
+
 
 // Error handling
 app.use((err, req, res, next) => {
