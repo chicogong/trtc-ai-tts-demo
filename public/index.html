@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TRTC-AI TTS Demo · 文本转语音/流式/克隆</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <style>
         :root {
             --bg: #f6f7f9;
@@ -690,7 +691,7 @@
                         <input type="text" id="clone-name" placeholder="给克隆的声音起个名字...">
                     </div>
                     <div class="form-group">
-                        <label>上传音频文件 (WAV 16kHz，5-12秒)</label>
+                        <label>上传音频文件（仅支持 WAV 16kHz 单声道，5-12秒）</label>
                         <div class="file-upload" id="file-upload" onclick="document.getElementById('clone-file').click()">
                             <div id="upload-text">
                                 <div style="font-size: 32px; margin-bottom: 8px; opacity: 0.5;">↑</div>
@@ -699,7 +700,7 @@
                             </div>
                             <div id="file-info" style="display: none;"></div>
                         </div>
-                        <input type="file" id="clone-file" accept="audio/*">
+                        <input type="file" id="clone-file" accept=".wav,audio/wav,audio/x-wav">
                     </div>
                     <div class="button-group">
                         <button class="btn btn-primary" onclick="cloneVoice()" id="clone-btn">克隆</button>
@@ -1040,6 +1041,15 @@
                 return;
             }
 
+            // 仅允许 WAV
+            const file = fileInput.files[0];
+            const name = (file.name || '').toLowerCase();
+            const type = (file.type || '').toLowerCase();
+            if (!(name.endsWith('.wav') || type.includes('wav'))) {
+                showMessage('clone-message', 'error', '仅支持 WAV 文件（16kHz 单声道，5-12秒）');
+                return;
+            }
+
             setLoading('clone', true);
 
             try {
@@ -1184,6 +1194,17 @@
 
             function render(file) {
                 if (file) {
+                    const name = (file.name || '').toLowerCase();
+                    const type = (file.type || '').toLowerCase();
+                    const isWav = name.endsWith('.wav') || type.includes('wav');
+                    if (!isWav) {
+                        showMessage('clone-message', 'error', '仅支持 WAV 文件（16kHz 单声道，5-12秒）');
+                        input.value = '';
+                        uploadText.style.display = 'block';
+                        fileInfo.style.display = 'none';
+                        drop.classList.remove('has-file');
+                        return;
+                    }
                     const size = (file.size / 1024).toFixed(1);
                     fileInfo.innerHTML = `
                         <div style="color: #34c759; margin-bottom: 4px;">✓ ${file.name}</div>
