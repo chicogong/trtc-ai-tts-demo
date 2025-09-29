@@ -1030,12 +1030,12 @@
         async function cloneVoice() {
             const voiceName = document.getElementById('clone-name').value.trim();
             const fileInput = document.getElementById('clone-file');
-            
+
             if (!voiceName) {
                 showMessage('clone-message', 'error', '请输入声音名称');
                 return;
             }
-            
+
             if (!fileInput.files[0]) {
                 showMessage('clone-message', 'error', '请上传音频文件');
                 return;
@@ -1050,6 +1050,52 @@
                 return;
             }
 
+            // 在客户端验证音频时长
+            setLoading('clone', true);
+
+            try {
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const arrayBuffer = await file.arrayBuffer();
+
+                // 尝试解码音频以获取准确的时长
+                try {
+                    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+                    const duration = audioBuffer.duration;
+                    const sampleRate = audioBuffer.sampleRate;
+                    const numberOfChannels = audioBuffer.numberOfChannels;
+
+                    console.log(`Audio validation: ${sampleRate}Hz, ${numberOfChannels}ch, ${duration.toFixed(1)}s`);
+
+                    // 验证时长
+                    if (duration < 4) {
+                        setLoading('clone', false);
+                        showMessage('clone-message', 'error', `音频时长太短：${duration.toFixed(1)}秒，建议4-12秒`);
+                        return;
+                    }
+
+                    if (duration > 12) {
+                        setLoading('clone', false);
+                        showMessage('clone-message', 'error', `音频时长太长：${duration.toFixed(1)}秒，建议4-12秒`);
+                        return;
+                    }
+
+                    // 验证采样率（建议）
+                    if (sampleRate !== 16000) {
+                        console.warn(`音频采样率：${sampleRate}Hz（建议16000Hz）`);
+                    }
+
+                    audioContext.close();
+                } catch (decodeError) {
+                    console.warn('Could not decode audio for validation:', decodeError);
+                    // 继续上传，让服务器验证
+                }
+            } catch (error) {
+                console.warn('Could not validate audio on client:', error);
+                // 继续上传，让服务器验证
+            }
+
+            // 重置 loading 状态，因为下面还会设置
+            setLoading('clone', false);
             setLoading('clone', true);
 
             try {

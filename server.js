@@ -12,7 +12,7 @@ const TrtcClient = tencentcloud.trtc.v20190722.Client;
 dotenv.config();
 
 const app = express();
-const port = process.env.PORT || 3001;
+const port = process.env.PORT || 3000;
 
 // Middleware
 app.use(cors());
@@ -217,20 +217,104 @@ app.post('/api/voice-clone', upload.single('audioFile'), async (req, res) => {
     }
     
     console.log(`Voice clone: "${name}", ${(req.file.size / 1024).toFixed(1)}KB`);
-    
+
     const audioBuffer = req.file.buffer;
-    if (audioBuffer.length > 8) {
-      const sampleRate = audioBuffer.readUInt32LE(24);
-      const channels = audioBuffer.readUInt16LE(22);
-      const dataSize = audioBuffer.readUInt32LE(40);
-      const duration = dataSize / (sampleRate * channels * 2);
-      
-      if (sampleRate !== 16000) {
-        console.warn(`Audio sample rate: ${sampleRate}Hz (16kHz recommended)`);
+    let sampleRate = 16000;
+    let channels = 1;
+    let bitsPerSample = 16;
+    let dataSize = 0;
+    let duration = 0;
+
+    if (audioBuffer.length > 44) {
+      try {
+        // Check if this is a valid WAV file
+        const riff = audioBuffer.toString('ascii', 0, 4);
+        const wave = audioBuffer.toString('ascii', 8, 12);
+
+        if (riff !== 'RIFF' || wave !== 'WAVE') {
+          return res.status(400).json({
+            success: false,
+            error: '请上传有效的 WAV 格式文件'
+          });
+        }
+
+        // Read basic WAV header info from fixed positions
+        sampleRate = audioBuffer.readUInt32LE(24);
+        channels = audioBuffer.readUInt16LE(22);
+        bitsPerSample = audioBuffer.readUInt16LE(34);
+
+        // Search for the 'data' chunk (it may not be at position 40)
+        let offset = 12; // Start after 'RIFF' and 'WAVE' headers
+        let foundDataChunk = false;
+
+        while (offset < audioBuffer.length - 8) {
+          const chunkId = audioBuffer.toString('ascii', offset, offset + 4);
+          const chunkSize = audioBuffer.readUInt32LE(offset + 4);
+
+          if (chunkId === 'data') {
+            dataSize = chunkSize;
+            foundDataChunk = true;
+            break;
+          } else if (chunkId === 'fmt ') {
+            // Already read fmt chunk data above
+          }
+
+          // Move to next chunk
+          offset += 8 + chunkSize;
+          // Ensure word alignment (chunks are word-aligned)
+          if (chunkSize % 2 !== 0) offset += 1;
+
+          // Safety check to prevent infinite loop
+          if (offset >= audioBuffer.length || chunkSize === 0) {
+            break;
+          }
+        }
+
+        // If we couldn't find the data chunk, estimate from file size
+        if (!foundDataChunk || dataSize === 0) {
+          console.warn('Could not find data chunk in WAV file, estimating from file size');
+          // Estimate data size (total size minus typical header size)
+          dataSize = audioBuffer.length - offset - 8;
+          if (dataSize < 0) dataSize = audioBuffer.length - 44;
+        }
+
+        // Calculate duration
+        const bytesPerSample = bitsPerSample / 8;
+        const bytesPerSecond = sampleRate * channels * bytesPerSample;
+        if (bytesPerSecond > 0) {
+          duration = dataSize / bytesPerSecond;
+        }
+
+        console.log(`Audio format: ${sampleRate}Hz, ${channels}ch, ${bitsPerSample}bit, ${duration.toFixed(1)}s, dataSize: ${dataSize}`);
+
+        if (sampleRate !== 16000) {
+          console.warn(`Audio sample rate: ${sampleRate}Hz (16kHz recommended)`);
+        }
+
+        // Validate duration
+        if (duration < 4) {
+          return res.status(400).json({
+            success: false,
+            error: `音频时长太短：${duration.toFixed(1)}秒，建议4-12秒`
+          });
+        }
+
+        if (duration > 12) {
+          console.warn(`Audio duration: ${duration.toFixed(1)}s (5-12s recommended)`);
+        }
+
+      } catch (parseError) {
+        console.error('Error parsing WAV header:', parseError);
+        return res.status(400).json({
+          success: false,
+          error: '音频文件格式错误，请上传有效的 WAV 文件'
+        });
       }
-      if (duration < 5 || duration > 12) {
-        console.warn(`Audio duration: ${duration.toFixed(1)}s (5-12s recommended)`);
-      }
+    } else {
+      return res.status(400).json({
+        success: false,
+        error: '音频文件太小，请上传有效的 WAV 文件'
+      });
     }
     
     const client = createTrtcClient();
