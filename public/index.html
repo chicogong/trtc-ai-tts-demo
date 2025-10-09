@@ -777,7 +777,6 @@
         document.addEventListener('DOMContentLoaded', async function() {
             await loadAvailableVoices(); // 先加载音色列表
             initVoices();
-            loadClonedVoices();
             initFileUpload();
             initTheme();
             initShortcuts();
@@ -1243,24 +1242,6 @@
                 showMessage('clone-message', 'error', `请求失败：${error.message}`);
             } finally {
                 setLoading('clone', false);
-            }
-        }
-
-        // 加载克隆声音列表
-        async function loadClonedVoices() {
-            try {
-                const response = await fetch('/api/cloned-voices');
-                const data = await response.json();
-                if (data.success && data.voices.length > 0) {
-                    clonedVoices = data.voices.map(v => ({
-                        name: v.voiceName,
-                        id: v.voiceId
-                    }));
-                    updateClonedVoicesList();
-                    document.getElementById('cloned-voices').classList.add('active');
-                }
-            } catch (error) {
-                console.warn('Failed to load cloned voices:', error);
             }
         }
 

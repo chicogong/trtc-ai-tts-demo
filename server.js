@@ -195,26 +195,7 @@ app.post('/api/voice-clone', upload.single('audioFile'), async (req, res) => {
   }
 });
 
-// 4. Get cloned voices list (从腾讯云 API 获取)
-app.get('/api/cloned-voices', async (_, res) => {
-  try {
-    const client = new TrtcClient(clientConfig);
-    const response = await client.DescribeVoiceList({
-      SdkAppId: parseInt(process.env.SDK_APP_ID),
-      APIKey: process.env.API_KEY
-    });
-
-    res.json({
-      success: true,
-      voices: response.VoiceSet || []
-    });
-  } catch (error) {
-    console.error('Get cloned voices error:', error);
-    res.json({ success: true, voices: [] });
-  }
-});
-
-// 5. Get available voices list
+// 4. Get available voices list
 app.get('/api/voices', (_, res) => {
   const voices = process.env.VOICE_LIST
     ? process.env.VOICE_LIST.split(',').map(v => v.trim()).filter(v => v)
