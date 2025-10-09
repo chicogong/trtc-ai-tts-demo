@@ -691,16 +691,16 @@
                         <input type="text" id="clone-name" placeholder="给克隆的声音起个名字...">
                     </div>
                     <div class="form-group">
-                        <label>上传音频文件（仅支持 WAV 16kHz 单声道，5-12秒）</label>
+                        <label>上传音频文件（支持任意格式，自动转换为 16kHz 单声道）</label>
                         <div class="file-upload" id="file-upload" onclick="document.getElementById('clone-file').click()">
                             <div id="upload-text">
                                 <div style="font-size: 32px; margin-bottom: 8px; opacity: 0.5;">↑</div>
                                 <div style="color: #1d1d1f;">点击上传音频文件</div>
-                                <div style="font-size: 12px; color: #86868b; margin-top: 4px;">支持 WAV、MP3 格式</div>
+                                <div style="font-size: 12px; color: #86868b; margin-top: 4px;">支持 WAV、MP3 等常见音频格式，建议 5-12 秒</div>
                             </div>
                             <div id="file-info" style="display: none;"></div>
                         </div>
-                        <input type="file" id="clone-file" accept=".wav,audio/wav,audio/x-wav">
+                        <input type="file" id="clone-file" accept="audio/*">
                     </div>
                     <div class="button-group">
                         <button class="btn btn-primary" onclick="cloneVoice()" id="clone-btn">克隆</button>
@@ -835,27 +835,20 @@
 
         // 初始化音色选择
         function initVoices() {
-            const ttsContainer = document.getElementById('tts-voices');
-            const streamingContainer = document.getElementById('streaming-voices');
+            const containers = {
+                'tts': { el: document.getElementById('tts-voices'), currentVoice },
+                'streaming': { el: document.getElementById('streaming-voices'), currentVoice: currentStreamingVoice }
+            };
 
-            // 清空现有内容
-            ttsContainer.innerHTML = '';
-            streamingContainer.innerHTML = '';
-
-            voices.forEach(voice => {
-                // TTS音色
-                const ttsItem = document.createElement('div');
-                ttsItem.className = voice.id === currentVoice ? 'voice-item selected' : 'voice-item';
-                ttsItem.textContent = voice.name;
-                ttsItem.onclick = () => selectVoice('tts', voice.id, ttsItem);
-                ttsContainer.appendChild(ttsItem);
-
-                // 流式音色
-                const streamingItem = document.createElement('div');
-                streamingItem.className = voice.id === currentStreamingVoice ? 'voice-item selected' : 'voice-item';
-                streamingItem.textContent = voice.name;
-                streamingItem.onclick = () => selectVoice('streaming', voice.id, streamingItem);
-                streamingContainer.appendChild(streamingItem);
+            Object.entries(containers).forEach(([type, { el, currentVoice: current }]) => {
+                el.innerHTML = '';
+                voices.forEach(voice => {
+                    const item = document.createElement('div');
+                    item.className = voice.id === current ? 'voice-item selected' : 'voice-item';
+                    item.textContent = voice.name;
+                    item.onclick = () => selectVoice(type, voice.id, item);
+                    el.appendChild(item);
+                });
             });
         }
 
@@ -894,17 +887,17 @@
             const numChannels = 1;
             const bitsPerSample = 16;
             const dataLength = pcmData.byteLength;
-            
+
             const arrayBuffer = new ArrayBuffer(44 + dataLength);
             const view = new DataView(arrayBuffer);
-            
+
             // WAV文件头
             const writeString = (offset, string) => {
                 for (let i = 0; i < string.length; i++) {
                     view.setUint8(offset + i, string.charCodeAt(i));
                 }
             };
-            
+
             writeString(0, 'RIFF');
             view.setUint32(4, 36 + dataLength, true);
             writeString(8, 'WAVE');
@@ -918,11 +911,72 @@
             view.setUint16(34, bitsPerSample, true);
             writeString(36, 'data');
             view.setUint32(40, dataLength, true);
-            
+
             const pcmView = new Uint8Array(arrayBuffer, 44);
             pcmView.set(new Uint8Array(pcmData));
-            
+
             return new Blob([arrayBuffer], { type: 'audio/wav' });
+        }
+
+        // 音频处理：转换为 16kHz 单声道 WAV
+        async function processAudioForCloning(file) {
+            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            const arrayBuffer = await file.arrayBuffer();
+            const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+
+            // 转换为单声道
+            let monoData;
+            if (audioBuffer.numberOfChannels === 1) {
+                monoData = audioBuffer.getChannelData(0);
+            } else {
+                // 多声道混合为单声道
+                const left = audioBuffer.getChannelData(0);
+                const right = audioBuffer.numberOfChannels > 1 ? audioBuffer.getChannelData(1) : left;
+                monoData = new Float32Array(left.length);
+                for (let i = 0; i < left.length; i++) {
+                    monoData[i] = (left[i] + right[i]) / 2;
+                }
+            }
+
+            // 重采样到 16kHz
+            const targetSampleRate = 16000;
+            const sourceSampleRate = audioBuffer.sampleRate;
+            let resampledData;
+
+            if (sourceSampleRate === targetSampleRate) {
+                resampledData = monoData;
+            } else {
+                // 使用离线音频上下文重采样
+                const offlineContext = new OfflineAudioContext(1, monoData.length * targetSampleRate / sourceSampleRate, targetSampleRate);
+                const source = offlineContext.createBufferSource();
+                const newBuffer = offlineContext.createBuffer(1, monoData.length, sourceSampleRate);
+                newBuffer.getChannelData(0).set(monoData);
+                source.buffer = newBuffer;
+                source.connect(offlineContext.destination);
+                source.start();
+
+                const renderedBuffer = await offlineContext.startRendering();
+                resampledData = renderedBuffer.getChannelData(0);
+            }
+
+            // 转换为 16-bit PCM
+            const pcmData = new Int16Array(resampledData.length);
+            for (let i = 0; i < resampledData.length; i++) {
+                const s = Math.max(-1, Math.min(1, resampledData[i]));
+                pcmData[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+            }
+
+            // 构建 WAV 文件
+            const wavBlob = pcmToWav(pcmData.buffer, targetSampleRate);
+
+            await audioContext.close();
+
+            return {
+                blob: wavBlob,
+                duration: resampledData.length / targetSampleRate,
+                sampleRate: targetSampleRate,
+                channels: 1
+            };
         }
 
         // 文本转语音
@@ -1077,67 +1131,34 @@
                 return;
             }
 
-            // 仅允许 WAV
             const file = fileInput.files[0];
-            const name = (file.name || '').toLowerCase();
-            const type = (file.type || '').toLowerCase();
-            if (!(name.endsWith('.wav') || type.includes('wav'))) {
-                showMessage('clone-message', 'error', '仅支持 WAV 文件（16kHz 单声道，5-12秒）');
-                return;
-            }
-
-            // 在客户端验证音频时长
             setLoading('clone', true);
 
             try {
-                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                const arrayBuffer = await file.arrayBuffer();
+                // 显示处理状态
+                showMessage('clone-message', 'info', '正在处理音频文件...');
 
-                // 尝试解码音频以获取准确的时长
-                try {
-                    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-                    const duration = audioBuffer.duration;
-                    const sampleRate = audioBuffer.sampleRate;
-                    const numberOfChannels = audioBuffer.numberOfChannels;
+                // 使用 processAudioForCloning 处理音频
+                const processed = await processAudioForCloning(file);
 
-                    console.log(`Audio validation: ${sampleRate}Hz, ${numberOfChannels}ch, ${duration.toFixed(1)}s`);
+                console.log(`Audio processed: ${processed.sampleRate}Hz, ${processed.channels}ch, ${processed.duration.toFixed(1)}s`);
 
-                    // 验证时长
-                    if (duration < 4) {
-                        setLoading('clone', false);
-                        showMessage('clone-message', 'error', `音频时长太短：${duration.toFixed(1)}秒，建议4-12秒`);
-                        return;
-                    }
-
-                    if (duration > 12) {
-                        setLoading('clone', false);
-                        showMessage('clone-message', 'error', `音频时长太长：${duration.toFixed(1)}秒，建议4-12秒`);
-                        return;
-                    }
-
-                    // 验证采样率（建议）
-                    if (sampleRate !== 16000) {
-                        console.warn(`音频采样率：${sampleRate}Hz（建议16000Hz）`);
-                    }
-
-                    audioContext.close();
-                } catch (decodeError) {
-                    console.warn('Could not decode audio for validation:', decodeError);
-                    // 继续上传，让服务器验证
+                // 验证时长
+                if (processed.duration < 4 || processed.duration > 12) {
+                    setLoading('clone', false);
+                    const msg = processed.duration < 4
+                        ? `音频时长太短：${processed.duration.toFixed(1)}秒，建议 4-12 秒`
+                        : `音频时长太长：${processed.duration.toFixed(1)}秒，建议 4-12 秒`;
+                    showMessage('clone-message', 'error', msg);
+                    return;
                 }
-            } catch (error) {
-                console.warn('Could not validate audio on client:', error);
-                // 继续上传，让服务器验证
-            }
 
-            // 重置 loading 状态，因为下面还会设置
-            setLoading('clone', false);
-            setLoading('clone', true);
+                // 上传处理后的音频
+                showMessage('clone-message', 'info', '正在上传克隆请求...');
 
-            try {
                 const formData = new FormData();
                 formData.append('voiceName', voiceName);
-                formData.append('audioFile', fileInput.files[0]);
+                formData.append('audioFile', processed.blob, 'processed.wav');
 
                 const response = await fetch('/api/voice-clone', {
                     method: 'POST',
@@ -1148,20 +1169,21 @@
 
                 if (data.success) {
                     showMessage('clone-message', 'success', `声音克隆成功！Voice ID: ${data.voiceId}`);
-                    
+
                     clonedVoices.push({
                         name: voiceName,
                         id: data.voiceId
                     });
                     currentClonedVoiceId = data.voiceId;
-                    
+
                     updateClonedVoicesList();
                     document.getElementById('cloned-voices').classList.add('active');
                 } else {
                     showMessage('clone-message', 'error', `克隆失败：${data.error}`);
                 }
             } catch (error) {
-                showMessage('clone-message', 'error', `请求失败：${error.message}`);
+                console.error('Voice clone error:', error);
+                showMessage('clone-message', 'error', `处理失败：${error.message}`);
             } finally {
                 setLoading('clone', false);
             }
@@ -1276,11 +1298,10 @@
 
             function render(file) {
                 if (file) {
-                    const name = (file.name || '').toLowerCase();
                     const type = (file.type || '').toLowerCase();
-                    const isWav = name.endsWith('.wav') || type.includes('wav');
-                    if (!isWav) {
-                        showMessage('clone-message', 'error', '仅支持 WAV 文件（16kHz 单声道，5-12秒）');
+                    const isAudio = type.startsWith('audio/');
+                    if (!isAudio && !file.name.match(/\.(wav|mp3|m4a|aac|ogg|flac|wma)$/i)) {
+                        showMessage('clone-message', 'error', '请上传音频文件');
                         input.value = '';
                         uploadText.style.display = 'block';
                         fileInfo.style.display = 'none';
@@ -1290,7 +1311,7 @@
                     const size = (file.size / 1024).toFixed(1);
                     fileInfo.innerHTML = `
                         <div style="color: #34c759; margin-bottom: 4px;">✓ ${file.name}</div>
-                        <div style="font-size: 12px; color: #6c757d;">${size} KB</div>
+                        <div style="font-size: 12px; color: #6c757d;">${size} KB · 将自动转换为 16kHz 单声道</div>
                     `;
                     uploadText.style.display = 'none';
                     fileInfo.style.display = 'block';
@@ -1340,9 +1361,9 @@
         }
 
         function clearClone() {
-            document.getElementById('clone-name').value = '';
-            document.getElementById('clone-file').value = '';
-            document.getElementById('clone-tts-text').value = '';
+            ['clone-name', 'clone-file', 'clone-tts-text'].forEach(id => {
+                document.getElementById(id).value = '';
+            });
             document.getElementById('file-upload').classList.remove('has-file');
             document.getElementById('upload-text').style.display = 'block';
             document.getElementById('file-info').style.display = 'none';
@@ -1401,13 +1422,16 @@
         }
 
         function initStreamingStatus() {
-            const statusDiv = document.getElementById('streaming-status');
-            statusDiv.classList.add('active');
-            
-            document.getElementById('connection-status').textContent = '连接中...';
-            document.getElementById('chunks-count').textContent = '0';
-            document.getElementById('first-chunk-time').textContent = '-';
-            document.getElementById('total-size').textContent = '0 KB';
+            document.getElementById('streaming-status').classList.add('active');
+            const updates = {
+                'connection-status': '连接中...',
+                'chunks-count': '0',
+                'first-chunk-time': '-',
+                'total-size': '0 KB'
+            };
+            Object.entries(updates).forEach(([id, text]) => {
+                document.getElementById(id).textContent = text;
+            });
         }
 
         function base64ToArrayBuffer(base64) {
@@ -1617,19 +1641,23 @@
 
         // 快捷键：Cmd/Ctrl+Enter 触发合成
         function initShortcuts() {
-            const bind = (id, handler) => {
-                const el = document.getElementById(id);
-                if (!el) return;
-                el.addEventListener('keydown', (e) => {
-                    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-                        e.preventDefault();
-                        handler();
-                    }
-                });
+            const shortcuts = {
+                'tts-text': synthesizeTTS,
+                'streaming-text': synthesizeStreaming,
+                'clone-tts-text': synthesizeWithClonedVoice
             };
-            bind('tts-text', synthesizeTTS);
-            bind('streaming-text', synthesizeStreaming);
-            bind('clone-tts-text', synthesizeWithClonedVoice);
+
+            Object.entries(shortcuts).forEach(([id, handler]) => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.addEventListener('keydown', (e) => {
+                        if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                            e.preventDefault();
+                            handler();
+                        }
+                    });
+                }
+            });
         }
 
         // 复制到剪贴板
