@@ -76,10 +76,33 @@
             color: var(--muted);
         }
 
-        .header-row { display:flex; align-items:center; justify-content:space-between; gap:12px; }
-        .actions { display:flex; align-items:center; gap:10px; }
-        .theme-toggle { border:1px solid var(--border); background: var(--panel); color: var(--text); padding:8px 10px; border-radius: 8px; cursor:pointer; font-size: 12px; }
-        .theme-toggle:hover { border-color: var(--primary); }
+        .header-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .theme-toggle {
+            border: 1px solid var(--border);
+            background: var(--panel);
+            color: var(--text);
+            padding: 8px 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+
+        .theme-toggle:hover {
+            border-color: var(--primary);
+        }
 
         .tabs {
             display: flex;
@@ -375,7 +398,12 @@
             align-items: center;
         }
 
-        .player-actions { display:flex; gap:8px; margin-left:auto; }
+        .player-actions {
+            display: flex;
+            gap: 8px;
+            margin-left: auto;
+        }
+
         .btn-tertiary {
             background: var(--panel);
             color: var(--text-secondary);
@@ -387,6 +415,7 @@
             cursor: pointer;
             transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
+
         .btn-tertiary:hover {
             background: var(--primary-light);
             border-color: var(--primary);
@@ -522,15 +551,56 @@
             font-size: 16px;
         }
 
-        .suggestions { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
-        .chip { padding:6px 12px; border:1.5px solid var(--border); border-radius:6px; font-size:12px; color:var(--text-secondary); cursor:pointer; background:var(--panel); transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); font-weight: 500; }
-        .chip:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); transform: translateY(-1px); }
+        .suggestions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 8px;
+        }
 
-        .copy-btn { margin-left:6px; padding:4px 8px; font-size:11px; border:1px solid var(--border); background: var(--panel); color: var(--muted); border-radius:4px; cursor:pointer; transition: all 0.15s ease; }
-        .copy-btn:hover { border-color: var(--primary); color: var(--primary); background: var(--bg); }
+        .chip {
+            padding: 6px 12px;
+            border: 1.5px solid var(--border);
+            border-radius: 6px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            background: var(--panel);
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            font-weight: 500;
+        }
 
+        .chip:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            background: var(--primary-light);
+            transform: translateY(-1px);
+        }
+
+        .copy-btn {
+            margin-left: 6px;
+            padding: 4px 8px;
+            font-size: 11px;
+            border: 1px solid var(--border);
+            background: var(--panel);
+            color: var(--muted);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .copy-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+            background: var(--bg);
+        }
+
+        /* ========== 响应式设计 ========== */
         @media (max-width: 920px) {
-            .content-grid { grid-template-columns: 1fr; }
+            .content-grid {
+                grid-template-columns: 1fr;
+            }
+
             .tabs {
                 flex-wrap: wrap;
             }
@@ -832,9 +902,12 @@
                 }));
                 console.log(`Loaded ${voices.length} voices from server`);
 
-                // 不设置默认音色，让用户自行选择
-                // currentVoice 和 currentStreamingVoice 保持为空
-                console.log('No default voice set - user must select a voice');
+                // 默认选择第一个音色
+                if (voices.length > 0) {
+                    currentVoice = voices[0].id;
+                    currentStreamingVoice = voices[0].id;
+                    console.log(`Default voice set to: ${currentVoice}`);
+                }
             } catch (error) {
                 console.error('Error loading voices:', error);
                 showMessage('tts-message', 'error', '加载音色列表失败，请检查网络连接');
