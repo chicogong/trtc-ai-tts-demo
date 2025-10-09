@@ -58,8 +58,8 @@ app.get('/', (_, res) => {
 // 1. Text to Speech API - 返回PCM数据
 app.post('/api/tts', async (req, res) => {
   try {
-    const { text, voice = '妮卡', voiceId } = req.body;
-    const selectedVoice = voiceId || voice || '妮卡';
+    const { text, voice, voiceId } = req.body;
+    const selectedVoice = voiceId || voice;
     
     if (!text) {
       return res.status(400).json({
@@ -111,7 +111,7 @@ app.post('/api/tts', async (req, res) => {
 app.get('/api/tts/stream', async (req, res) => {
   // 获取URL参数，Express已经自动解码
   const text = req.query.text || '';
-  const voice = req.query.voice || req.query.voiceId || '妮卡';
+  const voice = req.query.voice || req.query.voiceId;
   
   if (!text) {
     return res.status(400).json({
