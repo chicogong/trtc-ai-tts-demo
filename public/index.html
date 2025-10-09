@@ -7,23 +7,27 @@
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <style>
         :root {
-            --bg: #f6f7f9;
+            --bg: #fafbfc;
             --panel: #ffffff;
-            --text: #1f2328;
-            --muted: #667085;
-            --border: #e5e7eb;
-            --primary: #667eea;
-            --primary-2: #764ba2;
+            --text: #24292f;
+            --text-secondary: #57606a;
+            --muted: #6e7781;
+            --border: #d0d7de;
+            --primary: #8b5cf6;
+            --primary-hover: #7c3aed;
+            --primary-light: #f5f3ff;
             --radius: 12px;
         }
         body.dark {
-            --bg: #0b1220;
-            --panel: #0f172a;
-            --text: #e5e7eb;
-            --muted: #94a3b8;
-            --border: #1f2937;
-            --primary: #8b5cf6;
-            --primary-2: #6366f1;
+            --bg: #0d1117;
+            --panel: #161b22;
+            --text: #e6edf3;
+            --text-secondary: #c9d1d9;
+            --muted: #8b949e;
+            --border: #30363d;
+            --primary: #a78bfa;
+            --primary-hover: #c4b5fd;
+            --primary-light: #1e1b2e;
         }
         * {
             margin: 0;
@@ -119,7 +123,7 @@
             inset-inline: 10px;
             bottom: -8px;
             height: 2px;
-            background: linear-gradient(90deg, var(--primary), var(--primary-2));
+            background: var(--primary);
             border-radius: 2px;
         }
 
@@ -161,7 +165,7 @@
             margin-bottom: 10px;
             font-size: 14px;
             font-weight: 600;
-            color: #24292e;
+            color: var(--text);
             letter-spacing: -0.2px;
         }
 
@@ -200,27 +204,27 @@
         .voice-item {
             padding: 8px 16px;
             border: 1.5px solid var(--border);
-            border-radius: 20px;
+            border-radius: 8px;
             cursor: pointer;
-            transition: all 0.2s;
-            font-size: 14px;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            font-size: 13px;
             background: var(--panel);
-            color: var(--text);
+            color: var(--text-secondary);
             font-weight: 500;
         }
 
         .voice-item:hover {
-            border-color: #667eea;
+            border-color: var(--primary);
+            background: var(--primary-light);
+            color: var(--primary);
             transform: translateY(-1px);
-            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.15);
         }
 
         .voice-item.selected {
-            border-color: #667eea;
-            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-color: var(--primary);
+            background: var(--primary);
             color: white;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.25);
+            box-shadow: 0 2px 8px rgba(139, 92, 246, 0.25);
         }
 
         .button-group {
@@ -231,42 +235,44 @@
         }
 
         .btn {
-            padding: 10px 16px;
+            padding: 10px 20px;
             border: none;
             border-radius: 8px;
-            font-size: 13px;
+            font-size: 14px;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
             font-family: inherit;
-            position: relative;
-            overflow: hidden;
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, #667eea, #764ba2);
+            background: var(--primary);
             color: white;
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+            border: none;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
         }
 
         .btn-primary:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+            background: var(--primary-hover);
+            box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+            transform: translateY(-1px);
         }
 
         .btn-primary:active:not(:disabled) {
             transform: translateY(0);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
         }
 
         .btn-secondary {
-            background: white;
-            color: #586069;
-            border: 2px solid #e1e4e8;
+            background: var(--panel);
+            color: var(--text);
+            border: 1px solid var(--border);
         }
 
         .btn-secondary:hover:not(:disabled) {
-            background: #f6f8fa;
-            border-color: #d1d5da;
+            background: var(--primary-light);
+            border-color: var(--primary);
+            color: var(--primary);
         }
 
         .btn:disabled {
@@ -334,9 +340,9 @@
         .audio-player {
             margin-top: 8px;
             padding: 16px;
-            background: linear-gradient(135deg, #f8f9fa, #fff);
+            background: var(--panel);
             border-radius: 10px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
             border: 1px solid var(--border);
             display: none;
         }
@@ -347,7 +353,7 @@
 
         .audio-player h3 {
             margin: 0 0 16px 0;
-            color: #24292e;
+            color: var(--text);
             font-size: 16px;
             font-weight: 600;
         }
@@ -365,19 +371,27 @@
             padding-top: 12px;
             border-top: 1px solid var(--border);
             font-size: 12px;
-            color: #586069;
+            color: var(--muted);
             align-items: center;
         }
 
         .player-actions { display:flex; gap:8px; margin-left:auto; }
         .btn-tertiary {
-            background: #f6f8fa;
-            color: #24292e;
+            background: var(--panel);
+            color: var(--text-secondary);
             border: 1px solid var(--border);
+            padding: 7px 14px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        .btn-tertiary:hover { background:#eef1f4; }
-        body.dark .btn-tertiary { background:#0b1220; color:#e5e7eb; }
-        body.dark .btn-tertiary:hover { background:#111827; }
+        .btn-tertiary:hover {
+            background: var(--primary-light);
+            border-color: var(--primary);
+            color: var(--primary);
+        }
 
         .stat-item {
             display: flex;
@@ -386,23 +400,23 @@
         }
 
         .file-upload {
-            border: 2px dashed #d1d5da;
+            border: 2px dashed var(--border);
             border-radius: 12px;
             padding: 40px;
             text-align: center;
             cursor: pointer;
             transition: all 0.2s;
-            background: linear-gradient(135deg, #fafbfc, #fff);
+            background: var(--panel);
         }
 
         .file-upload:hover {
-            border-color: #667eea;
-            background: linear-gradient(135deg, #f0f3ff, #fff);
+            border-color: var(--primary);
+            background: var(--bg);
         }
 
         .file-upload.has-file {
-            border-color: #28a745;
-            background: linear-gradient(135deg, #d4edda, #fff);
+            border-color: #10b981;
+            background: var(--panel);
         }
 
         .file-upload input {
@@ -412,9 +426,9 @@
         .cloned-voices {
             margin-top: 32px;
             padding: 24px;
-            background: linear-gradient(135deg, #f8f9fa, #fff);
+            background: var(--bg);
             border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            border: 1px solid var(--border);
             display: none;
         }
 
@@ -427,10 +441,10 @@
             justify-content: space-between;
             align-items: center;
             padding: 16px;
-            background: white;
+            background: var(--panel);
             border-radius: 8px;
             margin-bottom: 12px;
-            border: 1px solid #e1e4e8;
+            border: 1px solid var(--border);
             transition: all 0.2s;
         }
 
@@ -440,40 +454,42 @@
 
         .voice-info .voice-name {
             font-weight: 500;
-            color: #1d1d1f;
+            color: var(--text);
             font-size: 14px;
         }
 
         .voice-info .voice-id {
             font-size: 11px;
-            color: #86868b;
+            color: var(--muted);
             margin-top: 2px;
             font-family: 'SF Mono', Monaco, monospace;
         }
 
         .use-btn {
-            padding: 6px 16px;
-            background: linear-gradient(135deg, #667eea, #764ba2);
+            padding: 7px 16px;
+            background: var(--primary);
             color: white;
             border: none;
             border-radius: 6px;
-            font-size: 12px;
+            font-size: 13px;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
         }
 
         .use-btn:hover {
+            background: var(--primary-hover);
+            box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3);
             transform: translateY(-1px);
-            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
         }
 
         .streaming-status {
             margin-top: 24px;
             padding: 20px;
-            background: linear-gradient(135deg, #f0f3ff, #fff);
+            background: var(--panel);
             border-radius: 10px;
-            border: 1px solid #d8dfff;
+            border: 1px solid var(--border);
             display: none;
         }
 
@@ -494,7 +510,7 @@
         .status-label {
             display: block;
             font-size: 12px;
-            color: #586069;
+            color: var(--muted);
             margin-bottom: 4px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
@@ -502,17 +518,16 @@
 
         .status-value {
             font-weight: 600;
-            color: #24292e;
+            color: var(--text);
             font-size: 16px;
         }
 
         .suggestions { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
-        .chip { padding:6px 10px; border:1px solid var(--border); border-radius:999px; font-size:12px; color:#475467; cursor:pointer; background:#fff; }
-        .chip:hover { border-color: var(--primary); color: var(--primary); }
-        body.dark .chip { background:#0f172a; color:#94a3b8; }
+        .chip { padding:6px 12px; border:1.5px solid var(--border); border-radius:6px; font-size:12px; color:var(--text-secondary); cursor:pointer; background:var(--panel); transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); font-weight: 500; }
+        .chip:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); transform: translateY(-1px); }
 
-        .copy-btn { margin-left:6px; padding:4px 8px; font-size:11px; border:1px solid var(--border); background: var(--panel); color: var(--text); border-radius:6px; cursor:pointer; }
-        .copy-btn:hover { border-color: var(--primary); }
+        .copy-btn { margin-left:6px; padding:4px 8px; font-size:11px; border:1px solid var(--border); background: var(--panel); color: var(--muted); border-radius:4px; cursor:pointer; transition: all 0.15s ease; }
+        .copy-btn:hover { border-color: var(--primary); color: var(--primary); background: var(--bg); }
 
         @media (max-width: 920px) {
             .content-grid { grid-template-columns: 1fr; }
