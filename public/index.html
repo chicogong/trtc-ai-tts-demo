@@ -667,6 +667,9 @@
                     <div class="form-group">
                         <label>音色</label>
                         <div class="voice-grid" id="tts-voices"></div>
+                        <div style="margin-top: 12px;">
+                            <input type="text" id="tts-custom-voice" placeholder="或输入自定义 Voice ID" style="font-size: 13px; padding: 8px 12px;">
+                        </div>
                     </div>
                     <div class="button-group">
                         <button class="btn btn-primary" onclick="synthesizeTTS()" id="tts-btn">合成</button>
@@ -712,6 +715,9 @@
                     <div class="form-group">
                         <label>音色</label>
                         <div class="voice-grid" id="streaming-voices"></div>
+                        <div style="margin-top: 12px;">
+                            <input type="text" id="streaming-custom-voice" placeholder="或输入自定义 Voice ID" style="font-size: 13px; padding: 8px 12px;">
+                        </div>
                     </div>
                     <div class="button-group">
                         <button class="btn btn-primary" onclick="synthesizeStreaming()" id="streaming-btn">流式合成</button>
@@ -805,10 +811,19 @@
                 <div class="card">
                     <h3>使用克隆声音合成</h3>
                     <div class="form-group">
+                        <label>Voice ID（可选，留空则自动生成）</label>
+                        <input type="text" id="clone-custom-voice" placeholder="输入自定义 Voice ID 或点击下方已克隆声音的「使用」按钮">
+                    </div>
+                    <div class="form-group">
+                        <label>文本内容</label>
                         <textarea id="clone-tts-text" rows="4" placeholder="输入要用克隆声音合成的文本...">你好，这是使用克隆声音合成的测试。</textarea>
                         <div class="button-group">
                             <button class="btn btn-primary" onclick="synthesizeWithClonedVoice()" id="clone-tts-btn">合成</button>
                         </div>
+                    </div>
+                    <div id="clone-tts-loading" class="loading">
+                        <div class="spinner"></div>
+                        <p>正在合成语音...</p>
                     </div>
                     <div id="clone-tts-player" class="audio-player">
                         <audio id="clone-tts-audio" controls></audio>
@@ -1066,21 +1081,23 @@
             };
         }
 
-        // 文本转语音
-        async function synthesizeTTS() {
-            const text = document.getElementById('tts-text').value.trim();
+        // 通用TTS合成函数
+        async function performTTS(config) {
+            const { type, textId, playerId, messageId, requestBody, historyType, historyMeta } = config;
+
+            const text = document.getElementById(textId).value.trim();
             if (!text) {
-                showMessage('tts-message', 'error', '请输入要合成的文本');
+                showMessage(messageId, 'error', '请输入要合成的文本');
                 return;
             }
 
-            setLoading('tts', true);
+            setLoading(type, true);
 
             try {
                 const response = await fetch('/api/tts', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ text, voice: currentVoice })
+                    body: JSON.stringify({ text, ...requestBody })
                 });
 
                 const data = await response.json();
@@ -1089,32 +1106,54 @@
                     const arrayBuffer = base64ToArrayBuffer(data.audio);
                     const blob = pcmToWav(arrayBuffer, data.sampleRate || 24000);
                     const audioUrl = URL.createObjectURL(blob);
-                    
-                    audioBlobs['tts'] = blob;
-                    
-                    document.getElementById('tts-audio').src = audioUrl;
-                    document.getElementById('tts-time').textContent = `${data.processingTime}ms`;
-                    document.getElementById('tts-size').textContent = `${(arrayBuffer.byteLength / 1024).toFixed(1)} KB`;
-                    
-                    showPlayer('tts-player');
-                    showMessage('tts-message', 'success', '合成完成！');
 
-                    // 保存历史（本地）
-                    saveHistory('tts', {
+                    audioBlobs[type] = blob;
+
+                    document.getElementById(`${type}-audio`).src = audioUrl;
+                    document.getElementById(`${type}-time`).textContent = `${data.processingTime}ms`;
+                    document.getElementById(`${type}-size`).textContent = `${(arrayBuffer.byteLength / 1024).toFixed(1)} KB`;
+
+                    showPlayer(playerId);
+                    showMessage(messageId, 'success', config.successMsg || '合成完成！');
+
+                    // 保存历史
+                    saveHistory(historyType, {
                         text,
-                        voice: currentVoice,
+                        ...historyMeta,
                         processingTime: data.processingTime,
                         sampleRate: data.sampleRate || 24000,
                         size: arrayBuffer.byteLength
                     }, blob);
                 } else {
-                    showMessage('tts-message', 'error', `合成失败：${data.error}`);
+                    showMessage(messageId, 'error', `合成失败：${data.error}`);
                 }
             } catch (error) {
-                showMessage('tts-message', 'error', `请求失败：${error.message}`);
+                showMessage(messageId, 'error', `请求失败：${error.message}`);
             } finally {
-                setLoading('tts', false);
+                setLoading(type, false);
             }
+        }
+
+        // 文本转语音
+        async function synthesizeTTS() {
+            // 优先使用自定义 Voice ID
+            const customVoice = document.getElementById('tts-custom-voice').value.trim();
+            const voiceId = customVoice || currentVoice;
+
+            if (!voiceId) {
+                showMessage('tts-message', 'error', '请选择音色或输入 Voice ID');
+                return;
+            }
+
+            await performTTS({
+                type: 'tts',
+                textId: 'tts-text',
+                playerId: 'tts-player',
+                messageId: 'tts-message',
+                requestBody: { voiceId },
+                historyType: 'tts',
+                historyMeta: { voiceId }
+            });
         }
 
         // 流式合成
@@ -1122,6 +1161,15 @@
             const text = document.getElementById('streaming-text').value.trim();
             if (!text) {
                 showMessage('streaming-message', 'error', '请输入要合成的文本');
+                return;
+            }
+
+            // 优先使用自定义 Voice ID
+            const customVoice = document.getElementById('streaming-custom-voice').value.trim();
+            const voiceId = customVoice || currentStreamingVoice;
+
+            if (!voiceId) {
+                showMessage('streaming-message', 'error', '请选择音色或输入 Voice ID');
                 return;
             }
 
@@ -1134,64 +1182,63 @@
             let firstChunkTime = null;
 
             try {
-                const eventSource = new EventSource(`/api/tts/stream?text=${encodeURIComponent(text)}&voice=${encodeURIComponent(currentStreamingVoice)}`);
-                
+                const eventSource = new EventSource(`/api/tts/stream?text=${encodeURIComponent(text)}&voiceId=${encodeURIComponent(voiceId)}`);
+
                 eventSource.onmessage = (event) => {
                     const data = JSON.parse(event.data);
-                    
+
                     if (data.audio) {
                         chunks++;
                         document.getElementById('connection-status').textContent = '接收中...';
                         document.getElementById('chunks-count').textContent = chunks;
-                        
+
                         if (data.firstChunkTime && firstChunkTime === null) {
                             firstChunkTime = data.firstChunkTime;
                             document.getElementById('first-chunk-time').textContent = `${firstChunkTime}ms`;
                         }
-                        
+
                         const arrayBuffer = base64ToArrayBuffer(data.audio);
                         audioChunks.push(arrayBuffer);
                         totalSize += arrayBuffer.byteLength;
                         document.getElementById('total-size').textContent = `${(totalSize / 1024).toFixed(1)} KB`;
-                    }
-                    
-                    if (data.done === true) {
-                        eventSource.close();
-                        document.getElementById('connection-status').textContent = '完成';
-                        
-                        if (audioChunks.length > 0) {
+
+                        // 处理最后一块数据
+                        if (data.done) {
+                            eventSource.close();
+                            document.getElementById('connection-status').textContent = '完成';
+
                             const combinedAudio = combineAudioChunks(audioChunks);
                             const blob = pcmToWav(combinedAudio, 24000);
                             const audioUrl = URL.createObjectURL(blob);
-                            
+
                             audioBlobs['streaming'] = blob;
-                            
+
                             document.getElementById('streaming-audio').src = audioUrl;
                             document.getElementById('streaming-time').textContent = `总计 ${data.processingTime || '-'}ms`;
                             document.getElementById('streaming-size').textContent = `${(totalSize / 1024).toFixed(1)} KB`;
-                            
+
                             showPlayer('streaming-player');
                             showMessage('streaming-message', 'success', `流式合成完成！首包耗时：${firstChunkTime}ms`);
 
-                            // 保存历史（本地）
                             saveHistory('streaming', {
                                 text,
-                                voice: currentStreamingVoice,
+                                voiceId: voiceId,
                                 processingTime: data.processingTime || 0,
                                 sampleRate: 24000,
                                 size: totalSize
                             }, blob);
+
+                            setLoading('streaming', false);
                         }
-                        setLoading('streaming', false);
                     }
-                    
+
                     if (data.error) {
                         eventSource.close();
                         showMessage('streaming-message', 'error', `合成失败：${data.error}`);
                         setLoading('streaming', false);
                     }
                 };
-                
+
                 eventSource.onerror = () => {
                     eventSource.close();
                     showMessage('streaming-message', 'error', '连接断开');
@@ -1278,59 +1325,27 @@
 
         // 使用克隆声音合成
         async function synthesizeWithClonedVoice() {
-            if (!currentClonedVoiceId) {
-                showMessage('clone-message', 'error', '请先克隆一个声音');
-                return;
-            }
-            
-            const text = document.getElementById('clone-tts-text').value.trim();
-            if (!text) {
-                showMessage('clone-message', 'error', '请输入要合成的文本');
+            // 优先使用自定义 Voice ID
+            const customVoice = document.getElementById('clone-custom-voice').value.trim();
+            const voiceId = customVoice || currentClonedVoiceId;
+
+            if (!voiceId) {
+                showMessage('clone-message', 'error', '请输入 Voice ID 或点击已克隆声音的「使用」按钮');
                 return;
             }
 
-            setLoading('clone', true);
             hidePlayer('clone-tts-player');
 
-            try {
-                const response = await fetch('/api/tts', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ text, voiceId: currentClonedVoiceId })
-                });
-
-                const data = await response.json();
-
-                if (data.success) {
-                    const arrayBuffer = base64ToArrayBuffer(data.audio);
-                    const blob = pcmToWav(arrayBuffer, data.sampleRate || 24000);
-                    const audioUrl = URL.createObjectURL(blob);
-                    
-                    audioBlobs['clone-tts'] = blob;
-                    
-                    document.getElementById('clone-tts-audio').src = audioUrl;
-                    document.getElementById('clone-tts-time').textContent = `${data.processingTime}ms`;
-                    document.getElementById('clone-tts-size').textContent = `${(arrayBuffer.byteLength / 1024).toFixed(1)} KB`;
-                    
-                    showPlayer('clone-tts-player');
-                    showMessage('clone-message', 'success', '使用克隆声音合成成功！');
-
-                    // 保存历史（本地）
-                    saveHistory('clone-tts', {
-                        text,
-                        voiceId: currentClonedVoiceId,
-                        processingTime: data.processingTime,
-                        sampleRate: data.sampleRate || 24000,
-                        size: arrayBuffer.byteLength
-                    }, blob);
-                } else {
-                    showMessage('clone-message', 'error', `合成失败：${data.error}`);
-                }
-            } catch (error) {
-                showMessage('clone-message', 'error', `请求失败：${error.message}`);
-            } finally {
-                setLoading('clone', false);
-            }
+            await performTTS({
+                type: 'clone-tts',
+                textId: 'clone-tts-text',
+                playerId: 'clone-tts-player',
+                messageId: 'clone-message',
+                requestBody: { voiceId },
+                historyType: 'clone-tts',
+                historyMeta: { voiceId },
+                successMsg: '使用克隆声音合成成功！'
+            });
         }
 
         // 更新克隆声音列表
@@ -1355,6 +1370,8 @@
         // 选择克隆声音
         function selectClonedVoice(voiceId) {
             currentClonedVoiceId = voiceId;
+            // 自动填充到 Voice ID 输入框
+            document.getElementById('clone-custom-voice').value = voiceId;
             showMessage('clone-message', 'info', `已选择克隆声音：${voiceId}`);
         }
 
@@ -1418,19 +1435,21 @@
         // 清空函数
         function clearTTS() {
             document.getElementById('tts-text').value = '';
+            document.getElementById('tts-custom-voice').value = '';
             hideMessage('tts-message');
             hidePlayer('tts-player');
         }
 
         function clearStreaming() {
             document.getElementById('streaming-text').value = '';
+            document.getElementById('streaming-custom-voice').value = '';
             hideMessage('streaming-message');
             hidePlayer('streaming-player');
             document.getElementById('streaming-status').classList.add('active');
         }
 
         function clearClone() {
-            ['clone-name', 'clone-file', 'clone-tts-text'].forEach(id => {
+            ['clone-name', 'clone-file', 'clone-custom-voice', 'clone-tts-text'].forEach(id => {
                 document.getElementById(id).value = '';
             });
             document.getElementById('file-upload').classList.remove('has-file');
@@ -1464,7 +1483,9 @@
 
         function hideMessage(id) {
             const element = document.getElementById(id);
-            element.className = 'message';
+            if (element) {
+                element.className = 'message';
+            }
         }
 
         function showPlayer(id) {
