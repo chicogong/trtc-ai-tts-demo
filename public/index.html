@@ -1656,19 +1656,54 @@
 
         function reuseHistory(id) {
             const tx = historyDB.transaction('history', 'readonly');
-            tx.objectStore('history').get(id).onsuccess = (e) => {
+            tx.objectStore('history').get(id).onsuccess = async (e) => {
                 const item = e.target.result; if (!item) return;
+
                 if (item.type === 'tts') {
+                    // 填充文本
                     document.getElementById('tts-text').value = item.text || '';
-                    if (item.voice) { currentVoice = item.voice; reselectVoice('tts', item.voice); }
+
+                    // 填充 Voice ID - 优先使用 voiceId,然后是 voice
+                    const voiceToUse = item.voiceId || item.voice;
+                    if (voiceToUse) {
+                        // 填充到自定义输入框
+                        document.getElementById('tts-custom-voice').value = voiceToUse;
+                        // 同时更新默认选择(如果在列表中)
+                        if (item.voice) {
+                            currentVoice = item.voice;
+                            reselectVoice('tts', item.voice);
+                        }
+                    }
+
+                    // 切换到对应标签页
                     switchTab('tts');
+
                 } else if (item.type === 'streaming') {
+                    // 填充文本
                     document.getElementById('streaming-text').value = item.text || '';
-                    if (item.voice) { currentStreamingVoice = item.voice; reselectVoice('streaming', item.voice); }
+
+                    // 填充 Voice ID
+                    const voiceToUse = item.voiceId || item.voice;
+                    if (voiceToUse) {
+                        document.getElementById('streaming-custom-voice').value = voiceToUse;
+                        if (item.voice) {
+                            currentStreamingVoice = item.voice;
+                            reselectVoice('streaming', item.voice);
+                        }
+                    }
+
                     switchTab('streaming');
+
                 } else {
+                    // 克隆合成
                     document.getElementById('clone-tts-text').value = item.text || '';
-                    if (item.voiceId) currentClonedVoiceId = item.voiceId;
+
+                    if (item.voiceId) {
+                        // 填充到自定义输入框
+                        document.getElementById('clone-custom-voice').value = item.voiceId;
+                        currentClonedVoiceId = item.voiceId;
+                    }
+
                     switchTab('clone');
                 }
             };
