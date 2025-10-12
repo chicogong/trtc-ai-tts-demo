@@ -212,7 +212,7 @@ app.get('/api/voices', (_, res) => {
 });
 
 // Error handling
-app.use((err, req, res, next) => {
+app.use((err, _, res) => {
   console.error('Server error:', err);
   res.status(500).json({ error: err.message || '服务器内部错误' });
 });
