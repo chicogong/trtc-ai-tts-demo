@@ -3,6 +3,7 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const path = require('path');
 const multer = require('multer');
+const os = require('os');
 
 // 加载腾讯云SDK
 const tencentcloud = require("tencentcloud-sdk-nodejs-trtc");
@@ -217,7 +218,24 @@ app.use((err, _, res) => {
   res.status(500).json({ error: err.message || '服务器内部错误' });
 });
 
+// Get local network IP
+function getLocalIP() {
+  const interfaces = os.networkInterfaces();
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name]) {
+      // Skip internal and non-IPv4 addresses
+      if (iface.family === 'IPv4' && !iface.internal) {
+        return iface.address;
+      }
+    }
+  }
+  return 'localhost';
+}
+
 // Start server
-app.listen(port, () => {
-  console.log(`🚀 TTS Server is running on http://localhost:${port}`);
+app.listen(port, '0.0.0.0', () => {
+  const localIP = getLocalIP();
+  console.log(`🚀 TTS Server is running on:`);
+  console.log(`   Local:   http://localhost:${port}`);
+  console.log(`   Network: http://${localIP}:${port}`);
 });

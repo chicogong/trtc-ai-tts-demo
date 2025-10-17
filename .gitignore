@@ -70,3 +70,5 @@ lerna-debug.log*
 
 # Library
 libpod
+
+deploy.sh
