@@ -54,6 +54,9 @@ temp/
 .claude/
 CLAUDE.md
 
+AGENTS.md
+CODEBUDDY.md
+
 # Python
 __pycache__/
 *.py[cod]

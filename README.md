@@ -30,8 +30,8 @@ npm install
 创建 `.env` 文件并配置以下参数：
 
 ```bash
-TENCENTCLOUD_SECRET_ID=your_secret_id
-TENCENTCLOUD_SECRET_KEY=your_secret_key
+TX_SECRET_ID=your_secret_id
+TX_SECRET_KEY=your_secret_key
 API_KEY=your_api_key
 SDK_APP_ID=your_sdk_app_id
 PORT=3000  # 可选，默认3000

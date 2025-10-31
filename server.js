@@ -29,8 +29,8 @@ const upload = multer({
 // 腾讯云客户端配置
 const clientConfig = {
   credential: {
-    secretId: process.env.TENCENTCLOUD_SECRET_ID,
-    secretKey: process.env.TENCENTCLOUD_SECRET_KEY,
+    secretId: process.env.TX_SECRET_ID,
+    secretKey: process.env.TX_SECRET_KEY,
   },
   region: process.env.TTS_REGION || "ap-beijing",
   profile: {
